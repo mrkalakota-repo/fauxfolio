@@ -194,18 +194,18 @@ export default function AppShell({
 
       {/* User */}
       <div className="mt-3 pt-3 border-t border-brand-border flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center text-green-400 text-xs font-bold">
+        <Link href="/profile" className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity">
+          <div className="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center text-green-400 text-xs font-bold flex-shrink-0">
             {initials}
           </div>
-          <div>
-            <div className="text-sm font-medium leading-none">{userName}</div>
-            <div className="text-xs text-gray-500 mt-0.5">Paper Trader</div>
+          <div className="min-w-0">
+            <div className="text-sm font-medium leading-none truncate">{userName}</div>
+            <div className="text-xs text-gray-500 mt-0.5">View profile</div>
           </div>
-        </div>
+        </Link>
         <button
           onClick={handleLogout}
-          className="p-1.5 text-gray-500 hover:text-red-400 transition-colors rounded-lg hover:bg-red-400/10"
+          className="p-1.5 text-gray-500 hover:text-red-400 transition-colors rounded-lg hover:bg-red-400/10 flex-shrink-0"
         >
           <LogOut className="w-4 h-4" />
         </button>
