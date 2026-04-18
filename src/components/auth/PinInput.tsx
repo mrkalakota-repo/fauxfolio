@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 interface Props {
   value: string
   onChange: (v: string) => void
-  onComplete: (pin: string) => void
+  onComplete?: (pin: string) => void
   length?: number
 }
 
@@ -16,7 +16,7 @@ export default function PinInput({ value, onChange, onComplete, length = 6 }: Pr
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.value.replace(/\D/g, '').slice(0, length)
     onChange(raw)
-    if (raw.length === length) onComplete(raw)
+    if (raw.length === length) onComplete?.(raw)
   }
 
   const dots = Array.from({ length })

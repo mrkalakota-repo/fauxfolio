@@ -73,7 +73,9 @@ export default function AppShell({
   const initials = userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
   const isLowBalance = cashBalance < LOW_BALANCE_THRESHOLD
 
-  const Sidebar = () => (
+  // Defined as a plain function (not a component) so React never remounts it on state changes,
+  // which would cause the search input to lose focus on every keystroke.
+  const renderSidebar = () => (
     <aside className="flex flex-col h-full w-64 bg-brand-surface border-r border-brand-border px-4" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 1.25rem)', paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1.25rem)' }}>
       {/* Logo + market status */}
       <Link href="/dashboard" className="flex items-center gap-2.5 px-2 mb-8">
@@ -215,14 +217,14 @@ export default function AppShell({
   return (
     <div className="flex h-screen overflow-hidden">
       <div className="hidden md:flex">
-        <Sidebar />
+        {renderSidebar()}
       </div>
 
       {mobileOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
           <div className="relative w-64 h-full">
-            <Sidebar />
+            {renderSidebar()}
           </div>
         </div>
       )}
