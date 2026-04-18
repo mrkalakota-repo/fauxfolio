@@ -1,0 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 15 15 15;
+    --foreground: 255 255 255;
+  }
+
+  * {
+    @apply border-brand-border;
+  }
+
+  body {
+    @apply bg-brand-dark text-white antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  ::-webkit-scrollbar {
+    @apply w-1.5 h-1.5;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-brand-border rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-brand-muted;
+  }
+}
+
+@layer utilities {
+  .text-gain { @apply text-green-400; }
+  .text-loss { @apply text-red-400; }
+  .bg-gain { @apply bg-green-400/10; }
+  .bg-loss { @apply bg-red-400/10; }
+  .glass {
+    @apply bg-white/5 backdrop-blur-sm border border-white/10;
+  }
+  .card {
+    @apply bg-brand-surface border border-brand-border rounded-2xl;
+  }
+}
+
+/* Price flash animations */
+.flash-green {
+  animation: flashGreen 0.6s ease-out;
+}
+.flash-red {
+  animation: flashRed 0.6s ease-out;
+}
+
+@keyframes flashGreen {
+  0% { background-color: rgba(0, 200, 83, 0.25); }
+  100% { background-color: transparent; }
+}
+@keyframes flashRed {
+  0% { background-color: rgba(255, 59, 48, 0.25); }
+  100% { background-color: transparent; }
+}
+
+/* Smooth number transitions */
+.price-value {
+  transition: color 0.3s ease;
+}
+
+/* Safe area insets for iPhone notch / Dynamic Island / home indicator */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+}
+
+/* Native app feel: disable callouts, highlights, selections on interactive elements */
+button, a, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Bottom nav / fixed bars should respect home indicator */
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.5rem);
+}
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Momentum scrolling on iOS */
+.scroll-momentum {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Hide scrollbars on mobile while keeping scroll */
+@media (max-width: 768px) {
+  ::-webkit-scrollbar {
+    display: none;
+  }
+}

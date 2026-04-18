@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  phone        String   @unique   // digits only, e.g. "5551234567"
+  pin          String             // bcrypt-hashed 6-digit PIN
+  name         String
+  cashBalance  Float    @default(10000)
+  totalTopUps  Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  holdings          Holding[]
+  orders            Order[]
+  watchlistItems    WatchlistItem[]
+  portfolioHistory  PortfolioSnapshot[]
+  transactions      Transaction[]
+
+  @@map("users")
+}
+
+model Stock {
+  symbol        String   @id
+  name          String
+  sector        String   @default("Unknown")
+  currentPrice  Float    @default(0)
+  previousClose Float    @default(0)
+  openPrice     Float    @default(0)
+  dayHigh       Float    @default(0)
+  dayLow        Float    @default(0)
+  volume        Float    @default(0)
+  marketCap     Float    @default(0)
+  description   String   @default("")
+  logoUrl       String   @default("")
+  exchange      String   @default("US")
+  priceUpdatedAt DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  holdings       Holding[]
+  orders         Order[]
+  watchlistItems WatchlistItem[]
+  priceHistory   PriceHistory[]
+
+  @@map("stocks")
+}
+
+model Holding {
+  id          String   @id @default(cuid())
+  userId      String
+  stockSymbol String
+  shares      Float
+  avgCost     Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stock Stock @relation(fields: [stockSymbol], references: [symbol])
+
+  @@unique([userId, stockSymbol])
+  @@map("holdings")
+}
+
+model Order {
+  id          String    @id @default(cuid())
+  userId      String
+  stockSymbol String
+  type        String    // MARKET | LIMIT
+  side        String    // BUY | SELL
+  shares      Float
+  limitPrice  Float?
+  fillPrice   Float?
+  status      String    @default("PENDING") // PENDING | FILLED | CANCELLED | REJECTED
+  createdAt   DateTime  @default(now())
+  filledAt    DateTime?
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stock Stock @relation(fields: [stockSymbol], references: [symbol])
+
+  @@map("orders")
+}
+
+model WatchlistItem {
+  id          String   @id @default(cuid())
+  userId      String
+  stockSymbol String
+  createdAt   DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stock Stock @relation(fields: [stockSymbol], references: [symbol])
+
+  @@unique([userId, stockSymbol])
+  @@map("watchlist_items")
+}
+
+model PortfolioSnapshot {
+  id          String   @id @default(cuid())
+  userId      String
+  totalValue  Float
+  cashBalance Float
+  snapshotAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, snapshotAt])
+  @@map("portfolio_snapshots")
+}
+
+model PriceHistory {
+  id          String   @id @default(cuid())
+  stockSymbol String
+  price       Float
+  volume      Float    @default(0)
+  timestamp   DateTime @default(now())
+
+  stock Stock @relation(fields: [stockSymbol], references: [symbol])
+
+  @@index([stockSymbol, timestamp])
+  @@map("price_history")
+}
+
+model Transaction {
+  id              String   @id @default(cuid())
+  userId          String
+  type            String   // TOP_UP
+  realAmountCents Int      // amount in cents (100 = $1.00)
+  virtualAmount   Float    // virtual cash added (10000)
+  stripeSessionId String?  @unique
+  status          String   @default("PENDING") // PENDING | COMPLETED | FAILED
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
+}
