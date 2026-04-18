@@ -221,8 +221,8 @@ export default function LandingPage() {
             <Trophy className="w-5 h-5 fill-yellow-400" />
             <span className="text-sm font-semibold uppercase tracking-widest">Global Rankings</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-black mb-3">Top 10 Traders Worldwide</h2>
-          <p className="text-gray-400">Ranked by total return on their starting $10,000</p>
+          <h2 className="text-3xl sm:text-4xl font-black mb-3">Top 10 Folios Worldwide</h2>
+          <p className="text-gray-400">Ranked by total return across their entire virtual portfolio</p>
         </div>
 
         {/* Top 3 podium */}
