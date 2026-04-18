@@ -48,11 +48,13 @@ export async function POST(req: NextRequest) {
         data: { status: 'COMPLETED' },
       })
 
+      const topUpUnits = Math.round(virtualAmount / 10_000)
+
       await tx.user.update({
         where: { id: transaction.userId },
         data: {
           cashBalance: { increment: virtualAmount },
-          totalTopUps: { increment: 1 },
+          totalTopUps: { increment: topUpUnits },
         },
       })
     })

@@ -3,27 +3,34 @@
 import { useState } from 'react'
 import { useSWRConfig } from 'swr'
 import toast from 'react-hot-toast'
-import { Wallet, TrendingUp, Loader2, X, Zap } from 'lucide-react'
+import { Wallet, TrendingUp, Loader2, X, Zap, Check } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
-import { TOPUP_VIRTUAL_CASH } from './GetMoreCash.const'
+import { CASH_PACKS, type CashPack } from './GetMoreCash.const'
+import { cn } from '@/lib/utils'
 
 interface Props {
   open: boolean
   onClose: () => void
   currentBalance: number
-  totalTopUps: number
 }
 
 export default function GetMoreCashModal({ open, onClose, currentBalance, totalTopUps }: Props) {
   const { mutate } = useSWRConfig()
   const [loading, setLoading] = useState(false)
+  const [selectedId, setSelectedId] = useState<string>('booster')
 
   if (!open) return null
+
+  const selected = CASH_PACKS.find(p => p.id === selectedId) ?? CASH_PACKS[1]
 
   async function handleTopUp() {
     setLoading(true)
     try {
-      const res = await fetch('/api/payments/create-checkout', { method: 'POST' })
+      const res = await fetch('/api/payments/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ packId: selected.id }),
+      })
       const data = await res.json()
       if (!res.ok) { toast.error(data.error || 'Failed to start checkout'); return }
 
@@ -35,7 +42,6 @@ export default function GetMoreCashModal({ open, onClose, currentBalance, totalT
         return
       }
 
-      // Stripe: redirect to checkout
       if (data.url) window.location.href = data.url
     } finally {
       setLoading(false)
@@ -63,38 +69,24 @@ export default function GetMoreCashModal({ open, onClose, currentBalance, totalT
           </div>
         </div>
 
-        <div className="bg-white/5 rounded-xl p-4 mb-5 space-y-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Current balance</span>
-            <span className={currentBalance < 100 ? 'text-red-400 font-semibold' : ''}>
-              {formatCurrency(currentBalance)}
-            </span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Top-ups so far</span>
-            <span>{totalTopUps}</span>
-          </div>
+        {/* Current balance */}
+        <div className="bg-white/5 rounded-xl p-3 mb-4 flex justify-between text-sm">
+          <span className="text-gray-400">Current balance</span>
+          <span className={currentBalance < 100 ? 'text-red-400 font-semibold' : ''}>
+            {formatCurrency(currentBalance)}
+          </span>
         </div>
 
-        {/* Offer card */}
-        <div className="bg-gradient-to-br from-green-500/20 to-green-500/5 border border-green-500/30 rounded-xl p-4 mb-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-green-400" />
-              <span className="font-semibold text-green-400">Trading Pack</span>
-            </div>
-            <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">Best value</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold">$1</span>
-            <span className="text-gray-400 text-sm">real money</span>
-          </div>
-          <div className="flex items-center gap-1.5 mt-1">
-            <TrendingUp className="w-4 h-4 text-green-400" />
-            <span className="text-green-400 font-semibold">
-              +{formatCurrency(TOPUP_VIRTUAL_CASH)} virtual cash
-            </span>
-          </div>
+        {/* Pack selector */}
+        <div className="space-y-2 mb-5">
+          {CASH_PACKS.map(pack => (
+            <PackCard
+              key={pack.id}
+              pack={pack}
+              selected={selectedId === pack.id}
+              onSelect={() => setSelectedId(pack.id)}
+            />
+          ))}
         </div>
 
         <p className="text-xs text-yellow-400/70 bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3 mb-5">
@@ -107,13 +99,60 @@ export default function GetMoreCashModal({ open, onClose, currentBalance, totalT
           className="w-full bg-green-500 hover:bg-green-400 text-black font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-          Get $10,000 for $1
+          Get {formatCurrency(selected.virtualCash)} for {selected.priceDisplay}
         </button>
 
         <p className="text-xs text-center text-gray-600 mt-3">
-          Secured by Stripe · Cancel anytime
+          Secured by Stripe · No subscription
         </p>
       </div>
     </div>
+  )
+}
+
+function PackCard({ pack, selected, onSelect }: { pack: CashPack; selected: boolean; onSelect: () => void }) {
+  return (
+    <button
+      onClick={onSelect}
+      className={cn(
+        'w-full flex items-center justify-between rounded-xl px-4 py-3 border transition-all text-left',
+        selected
+          ? 'bg-green-500/15 border-green-500/50'
+          : 'bg-white/5 border-brand-border hover:border-white/20'
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <div className={cn(
+          'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors',
+          selected ? 'border-green-500 bg-green-500' : 'border-gray-600'
+        )}>
+          {selected && <Check className="w-3 h-3 text-black" strokeWidth={3} />}
+        </div>
+        <div>
+          <div className="flex items-center gap-2">
+            <span className={cn('text-sm font-semibold', selected ? 'text-white' : 'text-gray-200')}>
+              {pack.label}
+            </span>
+            {pack.badge && (
+              <span className={cn(
+                'text-xs px-1.5 py-0.5 rounded font-semibold',
+                selected ? 'bg-green-500/30 text-green-300' : 'bg-white/10 text-gray-400'
+              )}>
+                {pack.badge}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1 mt-0.5">
+            <TrendingUp className="w-3 h-3 text-green-400" />
+            <span className="text-xs text-green-400 font-medium">
+              +{formatCurrency(pack.virtualCash)} virtual cash
+            </span>
+          </div>
+        </div>
+      </div>
+      <span className={cn('text-base font-bold flex-shrink-0', selected ? 'text-white' : 'text-gray-300')}>
+        {pack.priceDisplay}
+      </span>
+    </button>
   )
 }

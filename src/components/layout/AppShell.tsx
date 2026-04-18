@@ -46,7 +46,6 @@ export default function AppShell({
   const { data: tickData } = useSWR('/api/simulation/tick', fetcher, { refreshInterval: 0 })
 
   const cashBalance = portfolioData?.user?.cashBalance ?? 0
-  const totalTopUps = portfolioData?.user?.totalTopUps ?? 0
   const marketOpen = tickData?.marketOpen ?? false
 
   useEffect(() => { setMobileOpen(false) }, [pathname])
@@ -253,7 +252,6 @@ export default function AppShell({
         open={showTopUp}
         onClose={() => setShowTopUp(false)}
         currentBalance={cashBalance}
-        totalTopUps={totalTopUps}
       />
     </div>
   )
