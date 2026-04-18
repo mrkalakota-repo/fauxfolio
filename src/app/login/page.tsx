@@ -47,7 +47,7 @@ export default function LoginPage() {
             <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center">
               <TrendingUp className="w-6 h-6 text-black" />
             </div>
-            <span className="text-2xl font-bold">Fauxfolio</span>
+            <span className="text-2xl font-bold">FauxFolio</span>
           </div>
           <p className="text-gray-400 text-sm">Paper trading simulator — learn to invest risk-free</p>
         </div>

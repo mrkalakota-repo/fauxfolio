@@ -1,10 +1,9 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 import {
-  TrendingUp, TrendingDown, Trophy, Globe, Shield, Zap,
+  TrendingUp, Trophy, Globe, Shield, Zap,
   BarChart2, BookOpen, ChevronRight, Circle, Star, ArrowUpRight,
 } from 'lucide-react'
 import { cn, formatCurrency, formatPercent } from '@/lib/utils'
@@ -19,34 +18,6 @@ const RANK_COLORS = [
 const RANK_LABELS = ['🥇', '🥈', '🥉']
 const RANK_RING = ['ring-yellow-500/50', 'ring-slate-400/50', 'ring-orange-500/50']
 
-// Animated counter
-function AnimatedNumber({ value, prefix = '', decimals = 0 }: {
-  value: number; prefix?: string; decimals?: number
-}) {
-  const [display, setDisplay] = useState(0)
-  const frameRef = useRef<number>(0)
-  const startRef = useRef<number>(0)
-  const startValRef = useRef(0)
-
-  useEffect(() => {
-    startRef.current = performance.now()
-    startValRef.current = display
-    const duration = 1200
-
-    const tick = (now: number) => {
-      const elapsed = now - startRef.current
-      const progress = Math.min(elapsed / duration, 1)
-      const eased = 1 - Math.pow(1 - progress, 3) // ease-out cubic
-      setDisplay(startValRef.current + (value - startValRef.current) * eased)
-      if (progress < 1) frameRef.current = requestAnimationFrame(tick)
-    }
-    frameRef.current = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frameRef.current)
-  }, [value])
-
-  const formatted = decimals > 0 ? display.toFixed(decimals) : Math.floor(display).toLocaleString()
-  return <span>{prefix}{formatted}</span>
-}
 
 interface LeaderboardEntry {
   rank: number
@@ -164,7 +135,7 @@ export default function LandingPage() {
             <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
               <TrendingUp className="w-4 h-4 text-black" />
             </div>
-            <span className="font-bold text-lg">Fauxfolio</span>
+            <span className="font-bold text-lg">FauxFolio</span>
             <span className="hidden sm:inline text-xs bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-md font-medium">PAPER</span>
           </Link>
           <div className="flex items-center gap-3">
@@ -188,7 +159,7 @@ export default function LandingPage() {
       <TickerTape />
 
       {/* Hero */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-20 pb-16 text-center">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-12 pb-6 text-center">
         <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-full px-4 py-1.5 text-green-400 text-sm font-medium mb-6">
           <Circle className="w-2 h-2 fill-green-400" />
           Live paper trading simulator
@@ -205,10 +176,10 @@ export default function LandingPage() {
 
         <p className="text-gray-400 text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
           Get <span className="text-white font-semibold">$10,000 virtual cash</span> and trade real stocks at live market prices.
-          Learn investing, test strategies, and compete globally — free.
+          Learn investing, test strategies, and compete globally.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
           <Link
             href="/register"
             className="flex items-center gap-2 bg-green-500 hover:bg-green-400 text-black font-bold px-8 py-4 rounded-2xl text-lg transition-all hover:scale-105 shadow-lg shadow-green-500/20"
@@ -476,16 +447,17 @@ export default function LandingPage() {
             <div className="w-6 h-6 bg-green-500 rounded-md flex items-center justify-center">
               <TrendingUp className="w-3.5 h-3.5 text-black" />
             </div>
-            <span className="font-bold text-sm">Fauxfolio</span>
+            <span className="font-bold text-sm">FauxFolio</span>
           </div>
           <p className="text-xs text-gray-600 text-center max-w-lg leading-relaxed">
-            ⚠️ Fauxfolio is a simulated paper trading environment for educational purposes only.
+            ⚠️ FauxFolio is a simulated paper trading environment for educational purposes only.
             All trades use virtual money with no real monetary value. Not affiliated with any brokerage.
             Past simulated performance does not indicate real investment results.
           </p>
           <div className="flex items-center gap-4 text-xs text-gray-600">
             <Link href="/login" className="hover:text-gray-400">Login</Link>
             <Link href="/register" className="hover:text-gray-400">Register</Link>
+            <Link href="/privacy" className="hover:text-gray-400">Privacy</Link>
           </div>
         </div>
       </footer>

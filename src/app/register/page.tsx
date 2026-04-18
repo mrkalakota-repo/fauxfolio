@@ -56,7 +56,7 @@ export default function RegisterPage() {
             <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center">
               <TrendingUp className="w-6 h-6 text-black" />
             </div>
-            <span className="text-2xl font-bold">Fauxfolio</span>
+            <span className="text-2xl font-bold">FauxFolio</span>
           </div>
           <p className="text-gray-400 text-sm">Start with $10,000 virtual cash</p>
         </div>

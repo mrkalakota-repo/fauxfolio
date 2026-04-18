@@ -4,14 +4,14 @@ import { Toaster } from 'react-hot-toast'
 import NativeProvider from '@/components/NativeProvider'
 
 export const metadata: Metadata = {
-  title: 'Fauxfolio — Paper Trading Simulator',
+  title: 'FauxFolio — Paper Trading Simulator',
   description: 'A realistic stock trading simulator for learning to invest. No real money involved.',
   keywords: ['stock simulator', 'paper trading', 'investing education', 'virtual trading'],
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Fauxfolio',
+    title: 'FauxFolio',
   },
   formatDetection: {
     telephone: false,

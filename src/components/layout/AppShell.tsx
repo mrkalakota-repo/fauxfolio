@@ -81,7 +81,7 @@ export default function AppShell({
         <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
           <TrendingUp className="w-4 h-4 text-black" />
         </div>
-        <span className="font-bold text-lg">Fauxfolio</span>
+        <span className="font-bold text-lg">FauxFolio</span>
         <span className={cn(
           'flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-md font-medium ml-auto',
           marketOpen ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
@@ -235,7 +235,7 @@ export default function AppShell({
           </button>
           <div className="flex items-center gap-1.5">
             <TrendingUp className="w-4 h-4 text-green-500" />
-            <span className="font-bold">Fauxfolio</span>
+            <span className="font-bold">FauxFolio</span>
           </div>
           <button onClick={() => setShowTopUp(true)} className="text-green-400">
             <Wallet className="w-5 h-5" />

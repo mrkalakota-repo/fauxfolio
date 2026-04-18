@@ -4,7 +4,7 @@ const isProduction = !!process.env.CAPACITOR_SERVER_URL;
 
 const config: CapacitorConfig = {
   appId: 'com.fauxfolio.app',
-  appName: 'Fauxfolio',
+  appName: 'FauxFolio',
   webDir: 'out',
 
   server: isProduction

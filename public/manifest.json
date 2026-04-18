@@ -1,6 +1,6 @@
 {
-  "name": "Fauxfolio — Paper Trading",
-  "short_name": "Fauxfolio",
+  "name": "FauxFolio — Paper Trading",
+  "short_name": "FauxFolio",
   "description": "Practice stock trading with $10,000 virtual money. No risk, real market data.",
   "start_url": "/",
   "display": "standalone",
