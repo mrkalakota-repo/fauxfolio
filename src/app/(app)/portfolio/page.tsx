@@ -11,6 +11,25 @@ import {
 import PortfolioChart from '@/components/charts/PortfolioChart'
 import type { Portfolio } from '@/types'
 
+interface OptionPositionRow {
+  id: string
+  status: string
+  contracts: number
+  premiumPaid: number
+  closeProceeds: number | null
+  openedAt: string
+  closedAt: string | null
+  settlementNote: string
+  contract: {
+    stockSymbol: string
+    optionType: string
+    strikePrice: number
+    expiresAt: string
+  }
+  markValue: number
+  unrealizedPnl: number
+}
+
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
 const COLORS = ['#4ade80', '#60a5fa', '#f59e0b', '#f472b6', '#a78bfa', '#34d399', '#fb923c', '#818cf8']
@@ -19,6 +38,9 @@ export default function PortfolioPage() {
   const { data, isLoading } = useSWR<Portfolio>('/api/portfolio', fetcher, {
     refreshInterval: 8000,
   })
+  const { data: optionsData } = useSWR<{ positions: OptionPositionRow[] }>(
+    '/api/options/positions', fetcher, { refreshInterval: 8000 }
+  )
 
   const portfolio = data
 
@@ -207,6 +229,70 @@ export default function PortfolioPage() {
           </div>
         )}
       </div>
+      {/* Options Positions */}
+      {(optionsData?.positions?.length ?? 0) > 0 && (
+        <div className="card overflow-hidden">
+          <div className="flex items-center justify-between p-5 border-b border-brand-border">
+            <h2 className="font-semibold">Options Positions</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-xs text-gray-500 uppercase tracking-wide">
+                  <th className="text-left px-5 py-3">Contract</th>
+                  <th className="text-right px-5 py-3">Expiry</th>
+                  <th className="text-right px-5 py-3">Qty</th>
+                  <th className="text-right px-5 py-3">Cost</th>
+                  <th className="text-right px-5 py-3">Mark</th>
+                  <th className="text-right px-5 py-3">P&L</th>
+                  <th className="text-right px-5 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {optionsData!.positions.map(p => (
+                  <tr key={p.id} className="border-t border-brand-border hover:bg-white/2 transition-colors">
+                    <td className="px-5 py-3.5">
+                      <Link href={`/stock/${p.contract.stockSymbol}`} className="hover:opacity-80">
+                        <div className="text-sm font-semibold">
+                          {p.contract.stockSymbol} ${p.contract.strikePrice} {p.contract.optionType}
+                        </div>
+                        {p.settlementNote && (
+                          <div className="text-xs text-gray-500">{p.settlementNote}</div>
+                        )}
+                      </Link>
+                    </td>
+                    <td className="text-right px-5 py-3.5 text-sm text-gray-400">
+                      {new Date(p.contract.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </td>
+                    <td className="text-right px-5 py-3.5 text-sm">{p.contracts}</td>
+                    <td className="text-right px-5 py-3.5 text-sm">{formatCurrency(p.premiumPaid)}</td>
+                    <td className="text-right px-5 py-3.5 text-sm">
+                      {p.status === 'OPEN' ? formatCurrency(p.markValue) : '—'}
+                    </td>
+                    <td className={cn('text-right px-5 py-3.5 text-sm font-medium', getChangeColor(
+                      p.status === 'OPEN' ? p.unrealizedPnl : (p.closeProceeds ?? 0) - p.premiumPaid
+                    ))}>
+                      {p.status === 'OPEN'
+                        ? formatChange(p.unrealizedPnl)
+                        : formatChange((p.closeProceeds ?? 0) - p.premiumPaid)}
+                    </td>
+                    <td className="text-right px-5 py-3.5">
+                      <span className={cn(
+                        'text-xs px-2 py-0.5 rounded-md font-medium',
+                        p.status === 'OPEN' ? 'bg-blue-500/15 text-blue-400' :
+                        p.status === 'CLOSED' ? 'bg-gray-500/15 text-gray-400' :
+                        'bg-orange-500/15 text-orange-400'
+                      )}>
+                        {p.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

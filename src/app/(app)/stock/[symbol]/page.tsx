@@ -3,11 +3,13 @@
 import { useState, useEffect, useRef } from 'react'
 import useSWR from 'swr'
 import { useParams } from 'next/navigation'
-import { ArrowLeft, Star, StarOff, TrendingUp, TrendingDown } from 'lucide-react'
+import { ArrowLeft, Star, TrendingUp, TrendingDown } from 'lucide-react'
 import Link from 'next/link'
-import { cn, formatCurrency, formatPercent, formatChange, formatLargeNumber, formatNumber, getChangeColor } from '@/lib/utils'
+import { cn, formatCurrency, formatPercent, formatChange, formatLargeNumber, formatNumber } from '@/lib/utils'
 import StockChart from '@/components/charts/StockChart'
 import TradingPanel from '@/components/trading/TradingPanel'
+import OptionsPanel from '@/components/trading/OptionsPanel'
+import GetMoreCashModal from '@/components/GetMoreCashModal'
 import toast from 'react-hot-toast'
 import type { Stock, PricePoint, TimeRange, WatchlistItem } from '@/types'
 
@@ -18,11 +20,13 @@ const TIME_RANGES: TimeRange[] = ['1D', '1W', '1M', '3M', '1Y', 'ALL']
 export default function StockPage() {
   const { symbol } = useParams<{ symbol: string }>()
   const [range, setRange] = useState<TimeRange>('1D')
+  const [rightTab, setRightTab] = useState<'trade' | 'options'>('trade')
+  const [showTopUp, setShowTopUp] = useState(false)
   const [inWatchlist, setInWatchlist] = useState(false)
   const prevPrice = useRef<number | null>(null)
   const [priceFlash, setPriceFlash] = useState('')
 
-  const { data: stockData, mutate: mutateStock } = useSWR<{ stock: Stock }>(
+  const { data: stockData } = useSWR<{ stock: Stock }>(
     `/api/stocks/${symbol}`, fetcher, { refreshInterval: 4000 }
   )
   const { data: historyData, isLoading: histLoading } = useSWR<{ history: PricePoint[] }>(
@@ -82,6 +86,7 @@ export default function StockPage() {
     (h: { stockSymbol: string }) => h.stockSymbol === symbol?.toUpperCase()
   )
   const cashBalance = portfolioData?.user?.cashBalance ?? 0
+  const totalTopUps = portfolioData?.user?.totalTopUps ?? 0
 
   return (
     <div className="p-6 max-w-7xl mx-auto animate-fade-in">
@@ -194,17 +199,47 @@ export default function StockPage() {
             )}
           </div>
 
-          {/* Right: trading panel */}
-          <div>
-            <TradingPanel
-              stock={stock}
-              cashBalance={cashBalance}
-              holding={holding}
-              onOrderPlaced={() => {}}
-            />
+          {/* Right: trade / options tabs */}
+          <div className="space-y-3">
+            <div className="flex gap-1 p-1 bg-white/5 rounded-xl">
+              {(['trade', 'options'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setRightTab(tab)}
+                  className={cn(
+                    'flex-1 py-2 rounded-lg text-sm font-medium transition-colors capitalize',
+                    rightTab === tab ? 'bg-brand-surface text-white shadow' : 'text-gray-500 hover:text-white'
+                  )}
+                >
+                  {tab === 'trade' ? 'Trade Stocks' : 'Options'}
+                </button>
+              ))}
+            </div>
+
+            {rightTab === 'trade' ? (
+              <TradingPanel
+                stock={stock}
+                cashBalance={cashBalance}
+                holding={holding}
+                onOrderPlaced={() => {}}
+              />
+            ) : (
+              <OptionsPanel
+                symbol={stock.symbol}
+                currentPrice={stock.currentPrice}
+                totalTopUps={totalTopUps}
+                cashBalance={cashBalance}
+                onNeedUpgrade={() => setShowTopUp(true)}
+              />
+            )}
           </div>
         </div>
       )}
+      <GetMoreCashModal
+        open={showTopUp}
+        onClose={() => setShowTopUp(false)}
+        currentBalance={cashBalance}
+      />
     </div>
   )
 }

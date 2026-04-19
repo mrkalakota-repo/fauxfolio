@@ -129,6 +129,44 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // Expire options: settle ITM positions, expire OTM ones
+      const expiredContracts = await tx.optionContract.findMany({
+        where: { expiresAt: { lte: new Date() } },
+        include: {
+          positions: { where: { status: 'OPEN' } },
+          stock: { select: { currentPrice: true } },
+        },
+      })
+
+      for (const contract of expiredContracts) {
+        const spot = newPrices[contract.stockSymbol] ?? contract.stock.currentPrice
+        for (const pos of contract.positions) {
+          const intrinsic = contract.optionType === 'CALL'
+            ? Math.max(0, spot - contract.strikePrice)
+            : Math.max(0, contract.strikePrice - spot)
+          const settlement = intrinsic * 100 * pos.contracts
+
+          await tx.optionPosition.update({
+            where: { id: pos.id },
+            data: {
+              status: 'EXPIRED',
+              closedAt: new Date(),
+              closeProceeds: settlement,
+              settlementNote: intrinsic > 0
+                ? `Expired ITM. Settled at $${intrinsic.toFixed(2)}/share`
+                : 'Expired OTM. No value.',
+            },
+          })
+
+          if (settlement > 0) {
+            await tx.user.update({
+              where: { id: pos.userId },
+              data: { cashBalance: { increment: settlement } },
+            })
+          }
+        }
+      }
+
       // Prune price history older than 7 days
       const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
       await tx.priceHistory.deleteMany({ where: { timestamp: { lt: cutoff } } })

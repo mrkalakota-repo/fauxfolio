@@ -62,7 +62,7 @@ export function simulateBatchPriceTick(
 
 export function generateIntradayHistory(
   basePrice: number,
-  sector: string,
+  _sector: string,
   pointsBack: number = 78
 ): Array<{ price: number; timestamp: Date }> {
   const points: Array<{ price: number; timestamp: Date }> = []
@@ -79,6 +79,160 @@ export function generateIntradayHistory(
   }
   return points
 }
+
+// ─── Black-Scholes Options Pricing ───────────────────────────────────────────
+
+function normCdf(x: number): number {
+  const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741
+  const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911
+  const sign = x < 0 ? -1 : 1
+  const t = 1 / (1 + p * Math.abs(x) * 0.5)
+  const y = 1 - (((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t) * Math.exp(-x * x / 2) / Math.sqrt(2 * Math.PI)
+  return 0.5 * (1 + sign * (2 * y - 1))
+}
+
+function normPdf(x: number): number {
+  return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI)
+}
+
+export interface BlackScholesResult {
+  price: number
+  delta: number
+  gamma: number
+  theta: number
+  vega: number
+}
+
+export function blackScholes(
+  S: number,   // spot price
+  K: number,   // strike price
+  T: number,   // time to expiry in years
+  r: number,   // risk-free rate (annualized)
+  sigma: number, // implied volatility (annualized)
+  type: 'CALL' | 'PUT'
+): BlackScholesResult {
+  const t = Math.max(T, 0.001)
+  const d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * t) / (sigma * Math.sqrt(t))
+  const d2 = d1 - sigma * Math.sqrt(t)
+
+  const npd1 = normPdf(d1)
+
+  const price = type === 'CALL'
+    ? S * normCdf(d1) - K * Math.exp(-r * t) * normCdf(d2)
+    : K * Math.exp(-r * t) * normCdf(-d2) - S * normCdf(-d1)
+
+  const delta = type === 'CALL' ? normCdf(d1) : normCdf(d1) - 1
+  const gamma = npd1 / (S * sigma * Math.sqrt(t))
+  const theta = (type === 'CALL'
+    ? -(S * npd1 * sigma) / (2 * Math.sqrt(t)) - r * K * Math.exp(-r * t) * normCdf(d2)
+    : -(S * npd1 * sigma) / (2 * Math.sqrt(t)) + r * K * Math.exp(-r * t) * normCdf(-d2)
+  ) / 365
+  const vega = S * npd1 * Math.sqrt(t) / 100
+
+  return {
+    price: Math.max(price, 0),
+    delta: parseFloat(delta.toFixed(4)),
+    gamma: parseFloat(gamma.toFixed(6)),
+    theta: parseFloat(theta.toFixed(4)),
+    vega: parseFloat(vega.toFixed(4)),
+  }
+}
+
+const SECTOR_IV: Record<string, number> = {
+  Technology: 0.40,
+  Financial: 0.28,
+  Healthcare: 0.35,
+  Energy: 0.35,
+  'Consumer Cyclical': 0.30,
+  'Consumer Defensive': 0.22,
+  Communication: 0.32,
+  ETF: 0.20,
+}
+
+export function deriveImpliedVolatility(sector: string): number {
+  return SECTOR_IV[sector] ?? 0.30
+}
+
+export interface OptionChainContract {
+  stockSymbol: string
+  optionType: 'CALL' | 'PUT'
+  strikePrice: number
+  expiresAt: Date
+  price: number
+  delta: number
+  gamma: number
+  theta: number
+  vega: number
+}
+
+function nextFridays(from: Date, count: number): Date[] {
+  const results: Date[] = []
+  const d = new Date(from)
+  d.setHours(16, 0, 0, 0)
+  const dayOfWeek = d.getDay()
+  const daysUntilFriday = (5 - dayOfWeek + 7) % 7 || 7
+  d.setDate(d.getDate() + daysUntilFriday)
+  for (let i = 0; i < count; i++) {
+    results.push(new Date(d))
+    d.setDate(d.getDate() + 7)
+  }
+  return results
+}
+
+function lastFridayOfMonth(year: number, month: number): Date {
+  const d = new Date(year, month + 1, 0) // last day of month
+  d.setDate(d.getDate() - ((d.getDay() + 2) % 7))
+  d.setHours(16, 0, 0, 0)
+  return d
+}
+
+export function generateOptionChain(
+  symbol: string,
+  currentPrice: number,
+  sector: string,
+  referenceDate: Date = new Date()
+): OptionChainContract[] {
+  const sigma = deriveImpliedVolatility(sector)
+  const r = 0.05
+
+  const strikeMultipliers = [0.80, 0.85, 0.90, 0.95, 1.0, 1.05, 1.10, 1.15, 1.20]
+  const strikes = [...new Set(
+    strikeMultipliers.map(m => Math.round(currentPrice * m))
+  )]
+
+  const weeklies = nextFridays(referenceDate, 4)
+  const monthlies: Date[] = []
+  for (let i = 1; i <= 3; i++) {
+    const target = new Date(referenceDate)
+    target.setMonth(target.getMonth() + i)
+    const lf = lastFridayOfMonth(target.getFullYear(), target.getMonth())
+    if (!weeklies.some(w => w.getTime() === lf.getTime())) {
+      monthlies.push(lf)
+    }
+  }
+  const expiries = [...weeklies, ...monthlies]
+
+  const contracts: OptionChainContract[] = []
+  for (const expiresAt of expiries) {
+    const T = (expiresAt.getTime() - referenceDate.getTime()) / (1000 * 60 * 60 * 24 * 365)
+    if (T <= 0) continue
+    for (const strike of strikes) {
+      for (const optionType of ['CALL', 'PUT'] as const) {
+        const greeks = blackScholes(currentPrice, strike, T, r, sigma, optionType)
+        contracts.push({
+          stockSymbol: symbol,
+          optionType,
+          strikePrice: strike,
+          expiresAt,
+          ...greeks,
+        })
+      }
+    }
+  }
+  return contracts
+}
+
+// ─── Limit Orders ─────────────────────────────────────────────────────────────
 
 export function checkLimitOrders(
   orders: Array<{ id: string; side: string; limitPrice: number; stockSymbol: string }>,

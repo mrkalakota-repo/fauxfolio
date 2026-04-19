@@ -22,6 +22,10 @@ model User {
   watchlistItems    WatchlistItem[]
   portfolioHistory  PortfolioSnapshot[]
   transactions      Transaction[]
+  optionPositions   OptionPosition[]
+  createdLeagues    League[]         @relation("LeagueCreator")
+  leagueMemberships LeagueMember[]
+  sentLeagueInvites LeagueInvite[]   @relation("LeagueInviter")
 
   @@map("users")
 }
@@ -43,10 +47,11 @@ model Stock {
   priceUpdatedAt DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  holdings       Holding[]
-  orders         Order[]
-  watchlistItems WatchlistItem[]
-  priceHistory   PriceHistory[]
+  holdings        Holding[]
+  orders          Order[]
+  watchlistItems  WatchlistItem[]
+  priceHistory    PriceHistory[]
+  optionContracts OptionContract[]
 
   @@map("stocks")
 }
@@ -138,4 +143,88 @@ model Transaction {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("transactions")
+}
+
+model OptionContract {
+  id          String   @id @default(cuid())
+  stockSymbol String
+  optionType  String   // CALL | PUT
+  strikePrice Float
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  stock     Stock            @relation(fields: [stockSymbol], references: [symbol])
+  positions OptionPosition[]
+
+  @@unique([stockSymbol, optionType, strikePrice, expiresAt])
+  @@index([stockSymbol, expiresAt])
+  @@map("option_contracts")
+}
+
+model OptionPosition {
+  id             String    @id @default(cuid())
+  userId         String
+  contractId     String
+  contracts      Float
+  premiumPaid    Float
+  openedAt       DateTime  @default(now())
+  closedAt       DateTime?
+  closeProceeds  Float?
+  status         String    @default("OPEN") // OPEN | CLOSED | EXPIRED
+  settlementNote String    @default("")
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contract OptionContract @relation(fields: [contractId], references: [id])
+
+  @@index([userId, status])
+  @@map("option_positions")
+}
+
+model League {
+  id         String   @id @default(cuid())
+  name       String
+  creatorId  String
+  status     String   @default("ACTIVE") // ACTIVE | ENDED
+  startedAt  DateTime @default(now())
+  endsAt     DateTime
+  maxMembers Int      @default(10)
+
+  creator User           @relation("LeagueCreator", fields: [creatorId], references: [id])
+  members LeagueMember[]
+  invites LeagueInvite[]
+
+  @@index([status, endsAt])
+  @@map("leagues")
+}
+
+model LeagueMember {
+  id                String    @id @default(cuid())
+  leagueId          String
+  userId            String
+  joinedAt          DateTime  @default(now())
+  startingPortfolio Float
+  finalPortfolio    Float?
+  rank              Int?
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueId, userId])
+  @@map("league_members")
+}
+
+model LeagueInvite {
+  id           String   @id @default(cuid())
+  leagueId     String
+  inviterId    String
+  inviteePhone String
+  token        String   @unique @default(cuid())
+  status       String   @default("PENDING") // PENDING | ACCEPTED | DECLINED | EXPIRED
+  expiresAt    DateTime
+
+  league  League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  inviter User   @relation("LeagueInviter", fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@index([inviteePhone, status])
+  @@map("league_invites")
 }

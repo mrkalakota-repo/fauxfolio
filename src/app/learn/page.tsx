@@ -316,8 +316,8 @@ export default function LearnPage() {
                 <div><span className="text-white font-medium">Protective Put</span><span className="text-gray-400"> — Buy a put on a stock you own. Acts like insurance against a large drop.</span></div>
               </div>
             </div>
-            <Callout type="warn">
-              Options are not available in FauxFolio yet — but understanding them is essential for real investing. Options can expire completely worthless; most retail options buyers lose money. Master stock trading first.
+            <Callout type="tip">
+              Paper options are available in FauxFolio — open any stock page and switch to the <strong>Options</strong> tab to trade. Options can expire completely worthless; most retail options buyers lose money. Master the Greeks before sizing up.
             </Callout>
           </Section>
 

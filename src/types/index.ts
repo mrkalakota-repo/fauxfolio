@@ -120,3 +120,80 @@ export interface Transaction {
   status: string
   createdAt: string
 }
+
+export interface OptionContract {
+  id: string
+  stockSymbol: string
+  optionType: 'CALL' | 'PUT'
+  strikePrice: number
+  expiresAt: string
+}
+
+export interface OptionChainRow extends OptionContract {
+  price: number
+  delta: number
+  gamma: number
+  theta: number
+  vega: number
+}
+
+export interface OptionChain {
+  calls: OptionChainRow[]
+  puts: OptionChainRow[]
+  expiries: string[]
+  currentPrice: number
+}
+
+export interface OptionPosition {
+  id: string
+  status: 'OPEN' | 'CLOSED' | 'EXPIRED'
+  contracts: number
+  premiumPaid: number
+  closeProceeds: number | null
+  openedAt: string
+  closedAt: string | null
+  settlementNote: string
+  contract: OptionContract
+  markValue: number
+  unrealizedPnl: number
+}
+
+export interface League {
+  id: string
+  name: string
+  status: 'ACTIVE' | 'ENDED'
+  startedAt: string
+  endsAt: string
+  maxMembers: number
+  creatorName: string
+  creatorId: string
+}
+
+export interface LeagueMember {
+  userId: string
+  name: string
+  joinedAt: string
+  startingPortfolio: number
+  finalPortfolio: number | null
+  rank: number | null
+}
+
+export interface LeagueInvite {
+  id: string
+  token: string
+  leagueId: string
+  leagueName: string
+  leagueEndsAt: string
+  inviterName: string
+  expiresAt: string
+}
+
+export interface LeagueLeaderboardEntry {
+  userId: string
+  name: string
+  isCurrentUser: boolean
+  startingPortfolio: number
+  currentValue: number
+  growthPct: number
+  rank: number
+}
