@@ -49,7 +49,10 @@ export default async function globalSetup() {
   console.log('[E2E Setup] Environment OK — DATABASE_URL is a PostgreSQL URL.');
 }
 
-/** Reads a var from process.env first, then falls back to .env.local, then .env */
+/**
+ * Reads a var from process.env first, then .env.local, then .env.
+ * Uses the LAST match in each file (shell semantics: later lines win).
+ */
 function resolveEnvVar(key: string): string | undefined {
   if (process.env[key]) return process.env[key];
 
@@ -58,10 +61,12 @@ function resolveEnvVar(key: string): string | undefined {
     const fullPath = path.join(process.cwd(), file);
     if (!fs.existsSync(fullPath)) continue;
     const content = fs.readFileSync(fullPath, 'utf8');
+    let found: string | undefined;
     for (const line of content.split('\n')) {
       const match = line.match(/^([^#=\s]+)\s*=\s*"?([^"]*)"?\s*$/);
-      if (match && match[1] === key) return match[2];
+      if (match && match[1] === key) found = match[2]; // keep overwriting → last wins
     }
+    if (found !== undefined) return found;
   }
   return undefined;
 }
