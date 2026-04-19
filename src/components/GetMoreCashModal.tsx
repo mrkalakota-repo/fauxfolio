@@ -14,7 +14,7 @@ interface Props {
   currentBalance: number
 }
 
-export default function GetMoreCashModal({ open, onClose, currentBalance, totalTopUps }: Props) {
+export default function GetMoreCashModal({ open, onClose, currentBalance }: Props) {
   const { mutate } = useSWRConfig()
   const [loading, setLoading] = useState(false)
   const [selectedId, setSelectedId] = useState<string>('booster')
