@@ -13,6 +13,7 @@ npm run lint              # ESLint
 # Database
 npm run db:push           # Apply schema changes (add --accept-data-loss if columns removed)
 npm run db:seed           # Seed 25 stocks + demo user (phone: 5555550100, PIN: 123456)
+npm run db:seed-profiles  # Seed 100 fake traders for leaderboard demo (must use prod DATABASE_URL)
 npm run db:studio         # Open Prisma Studio
 npm run db:generate       # Regenerate Prisma client after schema changes
 
@@ -30,7 +31,9 @@ npx cap open android      # Open Android Studio
 
 Two env files for local dev:
 - `.env` — Prisma CLI only: `DATABASE_URL="file:./dev.db"`
-- `.env.local` — Next.js: `JWT_SECRET`, `FINNHUB_API_KEY`, `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_APP_URL`, etc.
+- `.env.local` — Next.js: `JWT_SECRET`, `FINNHUB_API_KEY`, `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, etc.
+
+**Cloudflare Turnstile** (bot protection on login/register): requires both `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (client-side, embedded at build time) and `TURNSTILE_SECRET_KEY` (server-side verify). If either is unset the widget silently disappears and all requests pass — safe for local dev. `NEXT_PUBLIC_TURNSTILE_SITE_KEY` must be echoed into `.env.production` in `amplify.yml` so Next.js embeds it at build time.
 
 **On AWS Amplify**: env vars set in the Amplify Console are NOT automatically injected into the SSR Lambda at runtime. The `amplify.yml` build phase writes them to `.env.production` so Next.js picks them up inside the Lambda package.
 
@@ -51,7 +54,16 @@ JWT stored in an httpOnly cookie named `fauxfolio_token` (7-day expiry). Auth us
 Next.js 16 renamed `middleware.ts` → `proxy.ts`. Only `src/proxy.ts` should exist — having both causes a build error. The proxy enforces HTTPS redirect in production.
 
 ### Rate Limiting
-`src/lib/rateLimit.ts` — in-memory Map-based limiter (no Redis). Works correctly for single-process deployments. `RATE_LIMITS` constants are defined there for AUTH, SEARCH, and PAYMENT endpoints.
+`src/lib/rateLimit.ts` — in-memory Map-based limiter (no Redis). Works correctly for single-process deployments. `RATE_LIMITS` constants:
+
+| Key | Limit | Window |
+|-----|-------|--------|
+| `AUTH` | 5 attempts | 15 min |
+| `REGISTER` | 3 accounts | 1 hour |
+| `SEARCH` | 60 requests | 1 min |
+| `PAYMENT` | 5 attempts | 1 hour |
+| `LEADERBOARD` | 30 requests | 1 min |
+| `TICK` | 20 requests | 1 min (fires ~7/min normally) |
 
 ### Price Engine
 `SimulationTicker` (client component in `AppShell`) POSTs to `/api/simulation/tick` every 8 seconds. The tick route:
@@ -69,10 +81,20 @@ SQLite-specific constraints (relevant if reverting to SQLite locally):
 
 Prisma client is a singleton in `src/lib/db.ts` to avoid hot-reload connection exhaustion.
 
-### Payments
-`src/lib/stripe.ts` exports a nullable `stripe` instance. When `STRIPE_SECRET_KEY` is unset, checkout directly credits $10,000 virtual cash and returns `{ devMode: true }`. The client checks for `devMode` and skips Stripe redirect.
+### Payments & Virtual Cash Packs
+`src/lib/stripe.ts` exports a nullable `stripe` instance. When `STRIPE_SECRET_KEY` is unset, checkout directly credits virtual cash and returns `{ devMode: true }`. The client checks for `devMode` and skips Stripe redirect.
 
-Webhook at `/api/payments/webhook` uses idempotency: looks up `Transaction` by `stripeSessionId` in our DB and skips if already `COMPLETED`. Never trusts `metadata` from Stripe for amounts — uses the DB record's `virtualAmount`.
+Available cash packs are defined in `src/components/GetMoreCash.const.ts`:
+
+| Pack ID | Price | Virtual Cash | `topUpUnits` |
+|---------|-------|-------------|-------------|
+| `starter` | $1.00 | $10,000 | 1 |
+| `booster` | $2.99 | $50,000 | 5 |
+| `mega` | $4.99 | $100,000 | 10 |
+
+`topUpUnits` keeps the leaderboard formula accurate: `invested = 10000 + totalTopUps * 10000`. Larger packs increment `totalTopUps` by their `topUpUnits` value, not by 1.
+
+The checkout route (`/api/payments/create-checkout`) accepts a `packId` in the request body. Webhook at `/api/payments/webhook` uses idempotency via `stripeSessionId` and always reads `virtualAmount` from the DB record — never from Stripe metadata.
 
 ### Mobile (Capacitor)
 Server URL mode — Capacitor WebView loads the deployed URL, no static export needed.
