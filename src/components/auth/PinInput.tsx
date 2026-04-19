@@ -8,9 +8,10 @@ interface Props {
   onChange: (v: string) => void
   onComplete?: (pin: string) => void
   length?: number
+  autoFocus?: boolean
 }
 
-export default function PinInput({ value, onChange, onComplete, length = 6 }: Props) {
+export default function PinInput({ value, onChange, onComplete, length = 6, autoFocus }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -33,6 +34,7 @@ export default function PinInput({ value, onChange, onComplete, length = 6 }: Pr
         maxLength={length}
         className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
         autoComplete="one-time-code"
+        autoFocus={autoFocus}
       />
       {/* Visual dots */}
       <div

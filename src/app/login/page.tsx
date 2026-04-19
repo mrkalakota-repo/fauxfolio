@@ -73,7 +73,7 @@ export default function LoginPage() {
               <label className="block text-sm text-gray-400 mb-2 flex items-center gap-1.5">
                 <Lock className="w-3.5 h-3.5" /> PIN
               </label>
-              <PinInput value={pin} onChange={setPin} onComplete={() => {}} />
+              <PinInput value={pin} onChange={setPin} onComplete={() => {}} autoFocus />
             </div>
 
             <TurnstileWidget />
