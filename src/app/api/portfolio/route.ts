@@ -51,11 +51,30 @@ export async function GET() {
     const dayChange = totalValue - yesterdayValue
     const dayChangePercent = yesterdayValue > 0 ? (dayChange / yesterdayValue) * 100 : 0
 
-    const portfolioHistory = await prisma.portfolioSnapshot.findMany({
+    const rawSnapshots = await prisma.portfolioSnapshot.findMany({
       where: { userId: session.userId },
-      orderBy: { snapshotAt: 'asc' },
+      orderBy: { snapshotAt: 'desc' },
       take: 90,
     })
+    rawSnapshots.reverse()
+
+    // Deduplicate: keep latest snapshot per calendar day
+    const byDay = new Map<string, typeof rawSnapshots[0]>()
+    for (const s of rawSnapshots) {
+      byDay.set(s.snapshotAt.toISOString().slice(0, 10), s)
+    }
+
+    // Historical days (exclude today — replaced with live value below)
+    const todayKey = new Date().toISOString().slice(0, 10)
+    const historicalDays = Array.from(byDay.entries())
+      .filter(([day]) => day !== todayKey)
+      .map(([, s]) => ({ id: s.id, userId: s.userId, totalValue: s.totalValue, cashBalance: s.cashBalance, snapshotAt: s.snapshotAt.toISOString() }))
+
+    // Always end the chart at the current live portfolio value
+    const portfolioHistory = [
+      ...historicalDays,
+      { id: 'live', userId: session.userId, totalValue, cashBalance: user.cashBalance, snapshotAt: new Date().toISOString() },
+    ]
 
     return NextResponse.json({
       user,
@@ -66,10 +85,7 @@ export async function GET() {
       totalGainLossPercent,
       dayChange,
       dayChangePercent,
-      portfolioHistory: portfolioHistory.map(p => ({
-        ...p,
-        snapshotAt: p.snapshotAt.toISOString(),
-      })),
+      portfolioHistory,
     })
   } catch (error) {
     console.error('[portfolio]', error)

@@ -19,33 +19,40 @@ export async function GET(
 
     const members = await prisma.leagueMember.findMany({
       where: { leagueId },
-      include: { user: { select: { id: true, name: true, cashBalance: true } } },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            cashBalance: true,
+            holdings: { include: { stock: { select: { currentPrice: true } } } },
+          },
+        },
+      },
     })
 
-    const entries = await Promise.all(
-      members.map(async m => {
-        const holdings = await prisma.holding.findMany({
-          where: { userId: m.userId },
-          include: { stock: { select: { currentPrice: true } } },
-        })
-        const holdingsValue = holdings.reduce((s, h) => s + h.stock.currentPrice * h.shares, 0)
-        const currentValue = m.user.cashBalance + holdingsValue
-        const growthPct = (currentValue - m.startingPortfolio) / m.startingPortfolio * 100
-        const firstName = m.user.name.split(' ')[0]
-        const lastName = m.user.name.split(' ').slice(1).join(' ')
-        const maskedName = lastName ? `${firstName} ${lastName[0]}.` : firstName
-        return {
-          userId: m.userId,
-          name: maskedName,
-          isCurrentUser: m.userId === session.userId,
-          startingPortfolio: m.startingPortfolio,
-          currentValue,
-          growthPct,
-          finalPortfolio: m.finalPortfolio,
-          rank: m.rank,
-        }
-      })
-    )
+    const entries = members.map(m => {
+      const holdingsValue = m.user.holdings.reduce(
+        (s, h) => s + h.stock.currentPrice * h.shares, 0
+      )
+      const currentValue = m.user.cashBalance + holdingsValue
+      const growthPct = m.startingPortfolio > 0
+        ? (currentValue - m.startingPortfolio) / m.startingPortfolio * 100
+        : 0
+      const firstName = m.user.name.split(' ')[0]
+      const lastName = m.user.name.split(' ').slice(1).join(' ')
+      const maskedName = lastName ? `${firstName} ${lastName[0]}.` : firstName
+      return {
+        userId: m.userId,
+        name: maskedName,
+        isCurrentUser: m.userId === session.userId,
+        startingPortfolio: m.startingPortfolio,
+        currentValue,
+        growthPct,
+        finalPortfolio: m.finalPortfolio,
+        rank: m.rank,
+      }
+    })
 
     entries.sort((a, b) => b.growthPct - a.growthPct)
     entries.forEach((e, i) => { e.rank = i + 1 })

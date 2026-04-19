@@ -178,6 +178,30 @@ export async function POST(req: NextRequest) {
       await tx.priceHistory.deleteMany({ where: { timestamp: { lt: cutoff } } })
     })
 
+    // Create at most one portfolio snapshot per user per day for chart history
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    const hasSnapshotToday = await prisma.portfolioSnapshot.count({
+      where: { userId: session.userId, snapshotAt: { gte: todayStart } },
+    }) > 0
+    if (!hasSnapshotToday) {
+      const [snapUser, snapHoldings] = await Promise.all([
+        prisma.user.findUnique({ where: { id: session.userId }, select: { cashBalance: true } }),
+        prisma.holding.findMany({
+          where: { userId: session.userId },
+          include: { stock: { select: { currentPrice: true } } },
+        }),
+      ])
+      const snapHoldingsValue = snapHoldings.reduce((s, h) => s + h.stock.currentPrice * h.shares, 0)
+      await prisma.portfolioSnapshot.create({
+        data: {
+          userId: session.userId,
+          totalValue: (snapUser?.cashBalance ?? 0) + snapHoldingsValue,
+          cashBalance: snapUser?.cashBalance ?? 0,
+        },
+      })
+    }
+
     return NextResponse.json({
       updated: Object.keys(newPrices).length,
       source: hasRealData() && isMarketOpen() ? 'live' : 'simulated',

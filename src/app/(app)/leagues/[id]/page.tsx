@@ -27,9 +27,9 @@ export default function LeaguePage() {
   const [inviting, setInviting] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
 
-  const { data: leagueData } = useSWR(`/api/leagues/${id}`, fetcher)
+  const { data: leagueData } = useSWR(`/api/leagues/${id}`, fetcher, { refreshInterval: 15000 })
   const { data: lbData, mutate: mutateLb } = useSWR(
-    `/api/leagues/${id}/leaderboard`, fetcher, { refreshInterval: 30000 }
+    `/api/leagues/${id}/leaderboard`, fetcher, { refreshInterval: 15000 }
   )
   const { data: portfolioData } = useSWR('/api/portfolio', fetcher)
 
