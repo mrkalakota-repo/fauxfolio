@@ -36,10 +36,16 @@ export function checkRateLimit(
 
 // Preset configs
 export const RATE_LIMITS = {
-  // Auth: 10 attempts per 15 minutes per IP
-  AUTH: { max: 10, windowMs: 15 * 60 * 1000 },
+  // Auth (login / change-pin): 5 attempts per 15 minutes per IP
+  AUTH: { max: 5, windowMs: 15 * 60 * 1000 },
+  // Register: 3 new accounts per hour per IP (bot barrier)
+  REGISTER: { max: 3, windowMs: 60 * 60 * 1000 },
   // Search: 60 requests per minute per IP
   SEARCH: { max: 60, windowMs: 60 * 1000 },
   // Payments: 5 checkout attempts per hour per user
   PAYMENT: { max: 5, windowMs: 60 * 60 * 1000 },
+  // Leaderboard (public, polled from landing page): 30 per minute per IP
+  LEADERBOARD: { max: 30, windowMs: 60 * 1000 },
+  // Simulation tick: 20 per minute per user (fires every 8s = ~7/min normally)
+  TICK: { max: 20, windowMs: 60 * 1000 },
 } as const

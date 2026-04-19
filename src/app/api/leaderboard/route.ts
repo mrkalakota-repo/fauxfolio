@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rateLimit'
 
 function maskName(name: string): string {
   const parts = name.trim().split(' ')
@@ -7,7 +8,11 @@ function maskName(name: string): string {
   return `${parts[0]} ${parts[parts.length - 1][0]}.`
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
+  const rl = checkRateLimit(`leaderboard:${ip}`, RATE_LIMITS.LEADERBOARD.max, RATE_LIMITS.LEADERBOARD.windowMs)
+  if (!rl.allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+
   try {
     const users = await prisma.user.findMany({
       select: {

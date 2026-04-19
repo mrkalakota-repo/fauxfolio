@@ -7,7 +7,7 @@ import useSWR from 'swr'
 import {
   TrendingUp, LayoutDashboard, Briefcase, Star, ClipboardList,
   Search, LogOut, ChevronRight, AlertCircle, Menu, BarChart2,
-  Wallet, Circle, Loader2,
+  Wallet, Circle, Loader2, BookOpen, Zap,
 } from 'lucide-react'
 import { cn, formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
@@ -130,6 +130,15 @@ export default function AppShell({
         )}
       </div>
 
+      {/* Trade CTA */}
+      <Link
+        href="/markets"
+        className="flex items-center justify-center gap-2 mb-4 py-2.5 bg-green-500 hover:bg-green-400 text-black font-bold text-sm rounded-xl transition-colors"
+      >
+        <Zap className="w-4 h-4" />
+        Trade Now
+      </Link>
+
       {/* Nav */}
       <nav className="flex-1 space-y-1">
         {NAV_ITEMS.map(item => {
@@ -150,6 +159,13 @@ export default function AppShell({
             </Link>
           )
         })}
+        <Link
+          href="/learn"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:bg-white/5 hover:text-white transition-all"
+        >
+          <BookOpen className="w-4 h-4" />
+          Trading 101
+        </Link>
       </nav>
 
       {/* Cash balance + top-up */}

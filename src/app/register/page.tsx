@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import { TrendingUp, Loader2, Phone, Lock, User } from 'lucide-react'
 import PinInput from '@/components/auth/PinInput'
 import PhoneInput from '@/components/auth/PhoneInput'
+import TurnstileWidget from '@/components/auth/Turnstile'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -33,10 +34,11 @@ export default function RegisterPage() {
 
     setLoading(true)
     try {
+      const cfToken = (document.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement)?.value
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, pin, name }),
+        body: JSON.stringify({ phone, pin, name, cfToken }),
       })
       const data = await res.json()
       if (!res.ok) { toast.error(data.error || 'Registration failed'); return }
@@ -134,6 +136,8 @@ export default function RegisterPage() {
                   <p className="text-xs text-red-400 mt-1">PINs do not match</p>
                 )}
               </div>
+
+              <TurnstileWidget />
 
               <div className="flex gap-3">
                 <button

@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import { TrendingUp, Loader2, Phone, Lock } from 'lucide-react'
 import PinInput from '@/components/auth/PinInput'
 import PhoneInput from '@/components/auth/PhoneInput'
+import TurnstileWidget from '@/components/auth/Turnstile'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -19,10 +20,11 @@ export default function LoginPage() {
     if (pin.length < 4) { toast.error('Enter your PIN'); return }
     setLoading(true)
     try {
+      const cfToken = (document.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement)?.value
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, pin }),
+        body: JSON.stringify({ phone, pin, cfToken }),
       })
       const data = await res.json()
       if (!res.ok) { toast.error(data.error || 'Login failed'); return }
@@ -69,6 +71,8 @@ export default function LoginPage() {
               </label>
               <PinInput value={pin} onChange={setPin} onComplete={() => {}} />
             </div>
+
+            <TurnstileWidget />
 
             <button
               type="submit"

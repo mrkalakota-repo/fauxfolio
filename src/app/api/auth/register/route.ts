@@ -4,10 +4,23 @@ import { prisma } from '@/lib/db'
 import { signToken, COOKIE_NAME, normalizePhone, validatePin } from '@/lib/auth'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rateLimit'
 
+async function verifyTurnstile(token: string | undefined, ip: string): Promise<boolean> {
+  const secret = process.env.TURNSTILE_SECRET_KEY
+  if (!secret) return true
+  if (!token) return false
+  const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ secret, response: token, remoteip: ip }),
+  })
+  const data = await res.json()
+  return data.success === true
+}
+
 export async function POST(req: NextRequest) {
-  // Rate limit by IP: 10 attempts per 15 minutes
+  // Rate limit by IP: 3 new accounts per hour
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
-  const rl = checkRateLimit(`register:${ip}`, RATE_LIMITS.AUTH.max, RATE_LIMITS.AUTH.windowMs)
+  const rl = checkRateLimit(`register:${ip}`, RATE_LIMITS.REGISTER.max, RATE_LIMITS.REGISTER.windowMs)
   if (!rl.allowed) {
     return NextResponse.json(
       { error: 'Too many requests. Try again later.' },
@@ -17,7 +30,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { phone, pin, name } = body
+    const { phone, pin, name, cfToken } = body
+
+    const human = await verifyTurnstile(cfToken, ip)
+    if (!human) return NextResponse.json({ error: 'Human verification failed. Please try again.' }, { status: 403 })
 
     if (!phone || !pin || !name ||
         typeof phone !== 'string' || typeof pin !== 'string' || typeof name !== 'string') {

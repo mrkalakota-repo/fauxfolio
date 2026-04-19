@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db'
 import { simulateBatchPriceTick, checkLimitOrders } from '@/lib/simulation'
 import { getQuote, hasRealData, isMarketOpen } from '@/lib/finnhub'
 import { getSessionUserFromRequest } from '@/lib/auth'
-
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rateLimit'
 
 // How many stocks to refresh from Finnhub per tick (respects 60 req/min limit)
 const BATCH_SIZE = 5
@@ -14,6 +14,10 @@ let tickIndex = 0
 export async function POST(req: NextRequest) {
   const session = await getSessionUserFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
+  const rl = checkRateLimit(`tick:${session.userId}:${ip}`, RATE_LIMITS.TICK.max, RATE_LIMITS.TICK.windowMs)
+  if (!rl.allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
 
   try {
     const stocks = await prisma.stock.findMany({

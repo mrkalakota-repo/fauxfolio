@@ -4,7 +4,7 @@ import Link from 'next/link'
 import useSWR from 'swr'
 import {
   TrendingUp, Trophy, Globe, Shield, Zap,
-  BarChart2, BookOpen, ChevronRight, Circle, Star, ArrowUpRight,
+  BarChart2, BookOpen, ChevronRight, Circle, Star, ArrowUpRight, Crown,
 } from 'lucide-react'
 import { cn, formatCurrency, formatPercent } from '@/lib/utils'
 
@@ -139,16 +139,13 @@ export default function LandingPage() {
             <span className="hidden sm:inline text-xs bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-md font-medium">PAPER</span>
           </Link>
           <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="text-sm text-gray-300 hover:text-white transition-colors px-3 py-2"
-            >
+            <Link href="/learn" className="text-sm text-gray-400 hover:text-white transition-colors px-3 py-2 hidden sm:block">
+              Learn
+            </Link>
+            <Link href="/login" className="text-sm text-gray-300 hover:text-white transition-colors px-3 py-2">
               Sign in
             </Link>
-            <Link
-              href="/register"
-              className="text-sm bg-green-500 hover:bg-green-400 text-black font-semibold px-4 py-2 rounded-xl transition-colors"
-            >
+            <Link href="/register" className="text-sm bg-green-500 hover:bg-green-400 text-black font-semibold px-4 py-2 rounded-xl transition-colors">
               Start Free
             </Link>
           </div>
@@ -394,6 +391,36 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* World's Richest banner */}
+      {leaderboard[0] && (
+        <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-12">
+          <div className="relative overflow-hidden rounded-2xl border border-yellow-500/30 bg-gradient-to-r from-yellow-500/10 via-amber-500/5 to-yellow-500/10 px-6 py-5 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+            <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
+              <Crown className="w-6 h-6 text-yellow-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold uppercase tracking-widest text-yellow-500/80 mb-0.5">
+                🎉 Congratulations — FauxFolio&apos;s World&apos;s Richest Trader
+              </p>
+              <p className="text-lg font-black text-white truncate">{leaderboard[0].name}</p>
+              <p className="text-sm text-yellow-200/60 mt-0.5">
+                Portfolio value: <span className="font-bold text-yellow-300">{formatCurrency(leaderboard[0].totalValue)}</span>
+                <span className="mx-2 text-yellow-500/40">·</span>
+                Return: <span className={cn('font-bold', leaderboard[0].totalReturnPct >= 0 ? 'text-green-400' : 'text-red-400')}>
+                  {leaderboard[0].totalReturnPct >= 0 ? '+' : ''}{leaderboard[0].totalReturnPct.toFixed(1)}%
+                </span>
+              </p>
+            </div>
+            <Link
+              href="/register"
+              className="flex-shrink-0 flex items-center gap-1.5 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm px-4 py-2.5 rounded-xl transition-colors"
+            >
+              Beat them <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* Features */}
       <section className="bg-brand-surface border-y border-brand-border py-20">
