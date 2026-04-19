@@ -2,19 +2,20 @@ import type { Page, Locator } from '@playwright/test';
 
 export class RegisterPage {
   readonly page: Page;
+  readonly nameInput: Locator;
   readonly phoneInput: Locator;
-  readonly pinInput: Locator;
-  readonly confirmPinInput: Locator;
-  readonly submitButton: Locator;
+  readonly continueButton: Locator;
+  readonly createAccountButton: Locator;
   readonly errorMessage: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.phoneInput = page.getByLabel(/phone/i);
-    const pinInputs = page.getByLabel(/pin/i);
-    this.pinInput = pinInputs.nth(0);
-    this.confirmPinInput = pinInputs.nth(1);
-    this.submitButton = page.getByRole('button', { name: /register|create account|sign up/i });
+    // Step 1 inputs
+    this.nameInput = page.getByPlaceholder('Alex Johnson');
+    this.phoneInput = page.locator('input[type="tel"]');
+    this.continueButton = page.getByRole('button', { name: 'Continue' });
+    // Step 2 submit
+    this.createAccountButton = page.getByRole('button', { name: 'Create Account' });
     this.errorMessage = page.getByRole('alert').or(page.locator('[data-testid="error"]'));
   }
 
@@ -22,11 +23,22 @@ export class RegisterPage {
     await this.page.goto('/register');
   }
 
-  async register(phone: string, pin: string, confirmPin?: string) {
+  /**
+   * Full 2-step registration flow.
+   * Step 1: name + phone → Continue
+   * Step 2: PIN + confirmPIN (opacity-0 inputs, force required) → Create Account
+   */
+  async register(phone: string, pin: string, confirmPin?: string, name = 'Test User') {
+    // Step 1
+    await this.nameInput.fill(name);
     await this.phoneInput.fill(phone);
-    await this.pinInput.fill(pin);
-    await this.confirmPinInput.fill(confirmPin ?? pin);
-    await this.submitButton.click();
+    await this.continueButton.click();
+
+    // Step 2 — two PinInput hidden inputs appear after Continue
+    const pinInputs = this.page.locator('input[type="password"]');
+    await pinInputs.nth(0).fill(pin, { force: true });
+    await pinInputs.nth(1).fill(confirmPin ?? pin, { force: true });
+    await this.createAccountButton.click();
   }
 
   async waitForError() {

@@ -5,13 +5,17 @@ export class LoginPage {
   readonly phoneInput: Locator;
   readonly pinInput: Locator;
   readonly submitButton: Locator;
+  readonly demoButton: Locator;
   readonly errorMessage: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.phoneInput = page.getByLabel(/phone/i);
-    this.pinInput = page.getByLabel(/pin/i).first();
-    this.submitButton = page.getByRole('button', { name: /log in|sign in/i });
+    // PhoneInput renders <input type="tel"> — no label association
+    this.phoneInput = page.locator('input[type="tel"]');
+    // PinInput renders an opacity-0 <input type="password"> behind dot visuals
+    this.pinInput = page.locator('input[type="password"]');
+    this.submitButton = page.getByRole('button', { name: 'Sign In' });
+    this.demoButton = page.getByRole('button', { name: 'Try Demo Account' });
     this.errorMessage = page.getByRole('alert').or(page.locator('[data-testid="error"]'));
   }
 
@@ -21,7 +25,14 @@ export class LoginPage {
 
   async login(phone: string, pin: string) {
     await this.phoneInput.fill(phone);
-    await this.pinInput.fill(pin);
+    // PinInput is opacity-0 — force required to bypass visibility check
+    await this.pinInput.fill(pin, { force: true });
+    await this.submitButton.click();
+  }
+
+  /** Fastest path for demo credentials — uses the pre-fill button */
+  async loginAsDemo() {
+    await this.demoButton.click();
     await this.submitButton.click();
   }
 
