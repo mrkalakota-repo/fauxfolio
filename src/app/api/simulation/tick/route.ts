@@ -11,6 +11,12 @@ const BATCH_SIZE = 5
 // Track round-robin position across ticks (module-level, resets on cold start)
 let tickIndex = 0
 
+export async function GET(req: NextRequest) {
+  const session = await getSessionUserFromRequest(req)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  return NextResponse.json({ marketOpen: isMarketOpen() })
+}
+
 export async function POST(req: NextRequest) {
   const session = await getSessionUserFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

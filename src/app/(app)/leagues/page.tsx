@@ -122,7 +122,7 @@ export default function LeaguesPage() {
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowCreate(false)} />
-          <div className="relative bg-brand-surface border border-brand-border rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+          <div role="dialog" aria-modal="true" className="relative bg-brand-surface border border-brand-border rounded-2xl p-6 w-full max-w-sm shadow-2xl">
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-bold text-lg">Create League</h2>
               <button onClick={() => setShowCreate(false)} className="p-1.5 text-gray-500 hover:text-white rounded-lg">

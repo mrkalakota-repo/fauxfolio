@@ -19,7 +19,7 @@ export class DashboardPage {
       page.getByText(/total value|portfolio value/i).first()
     );
     this.cashBalance = page.getByTestId('cash-balance').or(
-      page.getByText(/cash balance|available cash/i).first()
+      page.getByText(/cash balance|available cash|buying power/i).first()
     );
     this.lowBalanceAlert = page.getByText(/low balance|running low|get more cash/i);
     this.topUpButton = page.getByRole('button', { name: /top up|get cash|add funds/i });

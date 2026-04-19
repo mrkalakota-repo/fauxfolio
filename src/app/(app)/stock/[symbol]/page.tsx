@@ -123,6 +123,8 @@ export default function StockPage() {
                 </div>
                 <button
                   onClick={toggleWatchlist}
+                  data-testid="watchlist-toggle"
+                  aria-label={inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
                   className={cn(
                     'p-2.5 rounded-xl border transition-all',
                     inWatchlist

@@ -204,7 +204,7 @@ export default function AppShell({
               : 'bg-white/5 hover:bg-white/10 text-gray-300'
           )}
         >
-          + Get $10,000 for $1
+          Get More Cash
         </button>
       </div>
 
@@ -231,6 +231,7 @@ export default function AppShell({
         </Link>
         <button
           onClick={handleLogout}
+          aria-label="Sign out"
           className="p-1.5 text-gray-500 hover:text-red-400 transition-colors rounded-lg hover:bg-red-400/10 flex-shrink-0"
         >
           <LogOut className="w-4 h-4" />

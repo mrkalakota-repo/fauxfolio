@@ -20,7 +20,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default function OrdersPage() {
   const [filter, setFilter] = useState<'ALL' | 'FILLED' | 'PENDING' | 'CANCELLED'>('ALL')
-  const { data, isLoading, mutate } = useSWR<{ orders: Order[] }>(
+  const { data, isLoading, mutate } = useSWR<{ orders: Order[]; error?: string }>(
     '/api/orders', fetcher, { refreshInterval: 5000 }
   )
 
@@ -71,6 +71,11 @@ export default function OrdersPage() {
             {[...Array(5)].map((_, i) => (
               <div key={i} className="h-16 bg-white/5 rounded-xl animate-pulse" />
             ))}
+          </div>
+        ) : data?.error ? (
+          <div className="p-12 text-center text-red-400">
+            <ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-20" />
+            <p>{data.error}</p>
           </div>
         ) : orders.length === 0 ? (
           <div className="p-12 text-center text-gray-500">

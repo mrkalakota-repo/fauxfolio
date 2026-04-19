@@ -15,22 +15,16 @@ export class OptionsPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.optionChainTable = page.getByTestId('option-chain').or(
-      page.getByRole('table').filter({ hasText: /strike|call|put/i })
+    this.optionChainTable = page.getByRole('table').filter({ hasText: /strike|call|put/i });
+    this.callRows = page.locator('[data-testid="call-cell"]:has(button)');
+    this.putRows = page.locator('[data-testid="put-cell"]:has(button)');
+    this.expirySelector = page.getByRole('combobox');
+    this.upgradeModal = page.getByRole('dialog').filter({ hasText: /upgrade|premium|get more cash/i }).or(
+      page.getByText(/options trading locked|unlock.*cash pack/i)
     );
-    this.callRows = page.locator('[data-testid="call-row"]').or(
-      page.getByRole('row').filter({ hasText: /CALL/i })
-    );
-    this.putRows = page.locator('[data-testid="put-row"]').or(
-      page.getByRole('row').filter({ hasText: /PUT/i })
-    );
-    this.expirySelector = page.getByLabel(/expiry|expiration/i).or(
-      page.getByRole('combobox').filter({ hasText: /expiry/i })
-    );
-    this.upgradeModal = page.getByRole('dialog').filter({ hasText: /upgrade|premium|get more cash/i });
-    this.orderModal = page.getByRole('dialog').filter({ hasText: /option|contract/i });
-    this.quantityInput = page.getByLabel(/contracts|quantity/i);
-    this.confirmButton = page.getByRole('button', { name: /confirm|place order/i });
+    this.orderModal = page.getByRole('dialog').filter({ hasText: /buy to open|contract/i });
+    this.quantityInput = page.getByLabel(/contracts/i);
+    this.confirmButton = page.getByRole('button', { name: /buy.*contract|confirm|place order/i });
     this.successToast = page.getByText(/option (order )?placed|success/i);
     this.errorToast = page.getByRole('alert').or(page.getByText(/error|insufficient/i));
   }

@@ -35,6 +35,10 @@ export default function RegisterPage() {
     setLoading(true)
     try {
       const cfToken = (document.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement)?.value
+      if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !cfToken) {
+        toast.error('Complete the human verification before registering')
+        return
+      }
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -63,7 +63,7 @@ export default function OptionOrderModal({ contract, symbol, currentPrice, cashB
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative bg-brand-surface border border-brand-border rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+      <div role="dialog" aria-modal="true" className="relative bg-brand-surface border border-brand-border rounded-2xl p-6 w-full max-w-sm shadow-2xl">
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-bold text-lg">Buy to Open</h2>
           <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-white rounded-lg hover:bg-white/5">
@@ -100,7 +100,7 @@ export default function OptionOrderModal({ contract, symbol, currentPrice, cashB
         </div>
 
         <div className="mb-5">
-          <label className="text-sm text-gray-400 mb-2 block">Contracts (1 = 100 shares)</label>
+          <label htmlFor="contracts-input" className="text-sm text-gray-400 mb-2 block">Contracts (1 = 100 shares)</label>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setNumContracts(Math.max(1, numContracts - 1))}
@@ -109,6 +109,7 @@ export default function OptionOrderModal({ contract, symbol, currentPrice, cashB
               −
             </button>
             <input
+              id="contracts-input"
               type="number"
               min={1}
               max={100}

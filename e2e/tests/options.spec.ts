@@ -29,34 +29,56 @@ test.describe('Options – premium gate', () => {
   });
 });
 
+const PREMIUM_PORTFOLIO = {
+  user: { cashBalance: 50000, totalTopUps: 1, name: 'Test User' },
+  holdings: [],
+  totalValue: 50000,
+  dayChange: 0,
+  dayChangePercent: 0,
+  totalGainLoss: 0,
+  totalGainLossPercent: 0,
+  portfolioHistory: [],
+};
+
 // ─── Happy Path (simulated premium) ──────────────────────────────────────────
 
 test.describe('Options – happy path', () => {
   test.beforeEach(async ({ page }) => {
-    // Stub the API to return a minimal valid option chain (premium granted)
+    // Stub portfolio so user appears premium (totalTopUps >= 1)
+    await page.route('**/api/portfolio', (route) => {
+      route.fulfill({ json: PREMIUM_PORTFOLIO });
+    });
+
+    // Stub the API to return a minimal valid option chain matching OptionsPanel's expected shape
+    const expiry = new Date(Date.now() + 7 * 86400_000).toISOString();
     const stubChain = {
-      symbol: TEST_SYMBOL,
-      currentPrice: 200,
-      options: [
+      calls: [
         {
           id: 'opt-1',
-          type: 'CALL',
-          strike: 190,
-          expiry: new Date(Date.now() + 7 * 86400_000).toISOString(),
-          premium: 12.5,
-          impliedVolatility: 0.25,
+          optionType: 'CALL',
+          strikePrice: 190,
+          expiresAt: expiry,
+          price: 12.5,
           delta: 0.6,
-        },
-        {
-          id: 'opt-2',
-          type: 'PUT',
-          strike: 210,
-          expiry: new Date(Date.now() + 7 * 86400_000).toISOString(),
-          premium: 11.0,
-          impliedVolatility: 0.27,
-          delta: -0.4,
+          gamma: 0.05,
+          theta: -0.02,
+          vega: 0.1,
         },
       ],
+      puts: [
+        {
+          id: 'opt-2',
+          optionType: 'PUT',
+          strikePrice: 210,
+          expiresAt: expiry,
+          price: 11.0,
+          delta: -0.4,
+          gamma: 0.04,
+          theta: -0.02,
+          vega: 0.09,
+        },
+      ],
+      expiries: [expiry],
     };
 
     await page.route(`**/api/options/${TEST_SYMBOL}`, (route) => {

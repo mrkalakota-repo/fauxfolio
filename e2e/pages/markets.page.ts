@@ -8,7 +8,7 @@ export class MarketsPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.searchInput = page.getByRole('searchbox').or(page.getByPlaceholder(/search|symbol|ticker/i));
+    this.searchInput = page.getByPlaceholder(/AAPL, Tesla/i);
     this.stockRows = page.locator('[data-testid="stock-row"]').or(page.locator('tbody tr'));
     this.searchResults = page.locator('[data-testid="search-results"]').or(
       page.locator('[role="listbox"]')

@@ -51,7 +51,7 @@ export default function GetMoreCashModal({ open, onClose, currentBalance }: Prop
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative card w-full max-w-sm p-6 animate-slide-up">
+      <div role="dialog" aria-modal="true" className="relative card w-full max-w-sm p-6 animate-slide-up">
         <button
           onClick={onClose}
           className="absolute right-4 top-4 text-gray-500 hover:text-white"

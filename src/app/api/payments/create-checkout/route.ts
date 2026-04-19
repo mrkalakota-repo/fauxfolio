@@ -3,13 +3,23 @@ import { getSessionUser } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { stripe, hasStripe } from '@/lib/stripe'
 import { CASH_PACKS } from '@/components/GetMoreCash.const'
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rateLimit'
 
 export async function POST(req: NextRequest) {
   const session = await getSessionUser()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const rl = checkRateLimit(`payment:${session.userId}`, RATE_LIMITS.PAYMENT.max, RATE_LIMITS.PAYMENT.windowMs)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many payment attempts. Try again later.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfter) } }
+    )
+  }
+
   const body = await req.json().catch(() => ({}))
-  const packId = body.packId ?? 'starter'
+  const { packId } = body
+  if (!packId) return NextResponse.json({ error: 'Missing packId' }, { status: 400 })
   const pack = CASH_PACKS.find(p => p.id === packId)
   if (!pack) return NextResponse.json({ error: 'Invalid pack' }, { status: 400 })
 

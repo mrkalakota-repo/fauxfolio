@@ -22,7 +22,7 @@ export default function OrderConfirmModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative card w-full max-w-sm p-6 animate-slide-up">
+      <div role="dialog" aria-modal="true" className="relative card w-full max-w-sm p-6 animate-slide-up">
         <h3 className="text-lg font-bold mb-1">Confirm Order</h3>
         <p className="text-gray-500 text-sm mb-5">
           Review your {type.toLowerCase()} order before submitting

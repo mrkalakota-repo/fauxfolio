@@ -20,11 +20,9 @@ export class StockPage {
     this.currentPrice = page.getByTestId('current-price').or(
       page.getByText(/\$[\d,]+\.\d{2}/).first()
     );
-    this.sharesInput = page.getByLabel(/shares|quantity/i).or(
-      page.getByPlaceholder(/shares|quantity/i)
-    );
-    this.buyButton = page.getByRole('button', { name: /^buy/i });
-    this.sellButton = page.getByRole('button', { name: /^sell/i });
+    this.sharesInput = page.getByLabel(/shares|quantity/i);
+    this.buyButton = page.getByRole('button', { name: /review buy|^buy/i });
+    this.sellButton = page.getByRole('button', { name: /review sell|^sell/i });
     this.orderConfirmModal = page.getByRole('dialog');
     this.confirmOrderButton = page.getByRole('button', { name: /confirm|place order/i });
     this.cancelOrderButton = page.getByRole('button', { name: /cancel/i });
@@ -32,8 +30,8 @@ export class StockPage {
     this.orderErrorMessage = page.getByRole('alert').or(
       page.getByText(/insufficient|not enough|error/i)
     );
-    this.watchlistToggle = page.getByRole('button', { name: /watchlist|bookmark/i }).or(
-      page.getByTestId('watchlist-toggle')
+    this.watchlistToggle = page.getByTestId('watchlist-toggle').or(
+      page.getByRole('button', { name: /watchlist|bookmark/i })
     );
   }
 

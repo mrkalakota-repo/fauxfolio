@@ -108,10 +108,11 @@ export default function OptionsPanel({ symbol, currentPrice, totalTopUps, cashBa
                 const atm = Math.abs(strike - currentPrice) / currentPrice < 0.025
                 return (
                   <tr key={strike} className={cn(atm && 'bg-white/[0.02]')}>
-                    <td className="py-1.5 pr-2">
+                    <td data-testid="call-cell" className="py-1.5 pr-2">
                       {call ? (
                         <button
                           onClick={() => setSelectedContract(call)}
+                          aria-label="Buy"
                           className="text-green-400 hover:text-green-300 font-mono hover:underline"
                         >
                           {formatCurrency(call.price)}
@@ -121,10 +122,11 @@ export default function OptionsPanel({ symbol, currentPrice, totalTopUps, cashBa
                     <td className={cn('text-center font-mono font-semibold py-1.5', atm ? 'text-yellow-400' : 'text-gray-400')}>
                       {strike}
                     </td>
-                    <td className="py-1.5 pl-2 text-right">
+                    <td data-testid="put-cell" className="py-1.5 pl-2 text-right">
                       {put ? (
                         <button
                           onClick={() => setSelectedContract(put)}
+                          aria-label="Buy"
                           className="text-red-400 hover:text-red-300 font-mono hover:underline"
                         >
                           {formatCurrency(put.price)}

@@ -173,12 +173,13 @@ export default function TradingPanel({ stock, cashBalance, holding, onOrderPlace
         {/* Shares input */}
         <div className="mb-3">
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-sm text-gray-400">Shares</label>
+            <label htmlFor="shares-input" className="text-sm text-gray-400">Shares</label>
             <button onClick={setMaxShares} className="text-xs text-green-400 hover:text-green-300">
               Max ({side === 'BUY' ? maxSharesBuy.toFixed(2) : maxSharesSell})
             </button>
           </div>
           <input
+            id="shares-input"
             type="number"
             value={shares}
             onChange={e => setShares(e.target.value)}

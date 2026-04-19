@@ -24,18 +24,39 @@ test.describe('Leagues – premium gate', () => {
   });
 });
 
+const PREMIUM_PORTFOLIO = {
+  user: { cashBalance: 50000, totalTopUps: 1, name: 'Test User' },
+  holdings: [],
+  totalValue: 50000,
+  dayChange: 0,
+  dayChangePercent: 0,
+  totalGainLoss: 0,
+  totalGainLossPercent: 0,
+  portfolioHistory: [],
+};
+
 test.describe('Leagues – happy path', () => {
   test.beforeEach(async ({ page }) => {
+    // Stub portfolio so user appears premium (totalTopUps >= 1)
+    await page.route('**/api/portfolio', (route) => {
+      route.fulfill({ json: PREMIUM_PORTFOLIO });
+    });
+
     // Stub leagues API to simulate a premium user with one league
-    const stubLeagues = [
-      {
-        id: 'league-1',
-        name: 'Test League',
-        status: 'ACTIVE',
-        endsAt: new Date(Date.now() + 15 * 86400_000).toISOString(),
-        memberCount: 1,
-      },
-    ];
+    const stubLeagues = {
+      leagues: [
+        {
+          id: 'league-1',
+          name: 'Test League',
+          status: 'ACTIVE',
+          endsAt: new Date(Date.now() + 15 * 86400_000).toISOString(),
+          memberCount: 1,
+          maxMembers: 10,
+          creatorName: 'Test User',
+        },
+      ],
+      pendingInvites: [],
+    };
 
     await page.route('**/api/leagues', async (route) => {
       if (route.request().method() === 'GET') {
@@ -100,9 +121,12 @@ test.describe('Leagues – happy path', () => {
 
 test.describe('Leagues – non-happy path', () => {
   test('creating league with empty name is rejected', async ({ page }) => {
+    await page.route('**/api/portfolio', (route) => {
+      route.fulfill({ json: PREMIUM_PORTFOLIO });
+    });
     await page.route('**/api/leagues', async (route) => {
       if (route.request().method() === 'GET') {
-        route.fulfill({ json: [] });
+        route.fulfill({ json: { leagues: [], pendingInvites: [] } });
       } else {
         route.continue();
       }

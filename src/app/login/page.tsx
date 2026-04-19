@@ -21,6 +21,10 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const cfToken = (document.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement)?.value
+      if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !cfToken) {
+        toast.error('Complete the human verification before signing in')
+        return
+      }
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
