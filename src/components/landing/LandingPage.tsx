@@ -31,6 +31,7 @@ interface LeaderboardEntry {
 
 interface LeaderboardData {
   leaderboard: LeaderboardEntry[]
+  richest: LeaderboardEntry | null
   stats: { totalTraders: number; totalVirtualVolume: number }
 }
 
@@ -124,6 +125,7 @@ export default function LandingPage() {
   )
 
   const leaderboard = data?.leaderboard ?? []
+  const richest = data?.richest ?? null
   const stats = data?.stats
 
   return (
@@ -219,7 +221,7 @@ export default function LandingPage() {
             <span className="text-sm font-semibold uppercase tracking-widest">Global Rankings</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-black mb-3">Top 10 Folios Worldwide</h2>
-          <p className="text-gray-400">Ranked by total return across their entire virtual portfolio</p>
+          <p className="text-gray-400">Ranked by total portfolio value (cash + holdings)</p>
         </div>
 
         {/* Top 3 podium */}
@@ -393,7 +395,7 @@ export default function LandingPage() {
       </section>
 
       {/* World's Richest banner */}
-      {leaderboard[0] && (
+      {richest && (
         <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-12">
           <div className="relative overflow-hidden rounded-2xl border border-yellow-500/30 bg-gradient-to-r from-yellow-500/10 via-amber-500/5 to-yellow-500/10 px-6 py-5 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
             <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
@@ -403,12 +405,12 @@ export default function LandingPage() {
               <p className="text-xs font-bold uppercase tracking-widest text-yellow-500/80 mb-0.5">
                 🎉 Congratulations — FauxFolio&apos;s World&apos;s Richest Trader
               </p>
-              <p className="text-lg font-black text-white truncate">{leaderboard[0].name}</p>
+              <p className="text-lg font-black text-white truncate">{richest.name}</p>
               <p className="text-sm text-yellow-200/60 mt-0.5">
-                Portfolio value: <span className="font-bold text-yellow-300">{formatCurrency(leaderboard[0].totalValue)}</span>
+                Portfolio value: <span className="font-bold text-yellow-300">{formatCurrency(richest.totalValue)}</span>
                 <span className="mx-2 text-yellow-500/40">·</span>
-                Return: <span className={cn('font-bold', leaderboard[0].totalReturnPct >= 0 ? 'text-green-400' : 'text-red-400')}>
-                  {leaderboard[0].totalReturnPct >= 0 ? '+' : ''}{leaderboard[0].totalReturnPct.toFixed(1)}%
+                Return: <span className={cn('font-bold', richest.totalReturnPct >= 0 ? 'text-green-400' : 'text-red-400')}>
+                  {richest.totalReturnPct >= 0 ? '+' : ''}{richest.totalReturnPct.toFixed(1)}%
                 </span>
               </p>
             </div>

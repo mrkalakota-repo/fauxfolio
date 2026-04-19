@@ -1,0 +1,4 @@
+.auth/user.json
+reports/
+playwright-report/
+test-results/

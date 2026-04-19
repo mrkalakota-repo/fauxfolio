@@ -29,31 +29,39 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    const ranked = users
-      .map(user => {
-        const holdingsValue = user.holdings.reduce(
-          (sum, h) => sum + h.stock.currentPrice * h.shares, 0
-        )
-        const totalValue = user.cashBalance + holdingsValue
-        const invested = 10000 + user.totalTopUps * 10000
-        const totalReturn = totalValue - invested
-        const totalReturnPct = (totalReturn / invested) * 100
+    const computed = users.map(user => {
+      const holdingsValue = user.holdings.reduce(
+        (sum, h) => sum + h.stock.currentPrice * h.shares, 0
+      )
+      const totalValue = user.cashBalance + holdingsValue
+      const invested = 10000 + user.totalTopUps * 10000
+      const totalReturn = totalValue - invested
+      const totalReturnPct = (totalReturn / invested) * 100
 
-        return {
-          id: user.id,
-          name: maskName(user.name),
-          totalValue,
-          cashBalance: user.cashBalance,
-          holdingsValue,
-          totalReturn,
-          totalReturnPct,
-          invested,
-          joinedAt: user.createdAt.toISOString(),
-        }
-      })
+      return {
+        id: user.id,
+        name: maskName(user.name),
+        totalValue,
+        cashBalance: user.cashBalance,
+        holdingsValue,
+        totalReturn,
+        totalReturnPct,
+        invested,
+        joinedAt: user.createdAt.toISOString(),
+      }
+    })
+
+    // Top 10 ranked by % return (best strategy wins)
+    const ranked = [...computed]
       .sort((a, b) => b.totalReturnPct - a.totalReturnPct)
       .slice(0, 10)
       .map((entry, index) => ({ ...entry, rank: index + 1 }))
+
+    // Richest trader by absolute portfolio value
+    const richest = computed.reduce(
+      (best, u) => (u.totalValue > best.totalValue ? u : best),
+      computed[0] ?? null
+    )
 
     // Aggregate stats
     const totalTraders = await prisma.user.count()
@@ -63,6 +71,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       leaderboard: ranked,
+      richest,
       stats: {
         totalTraders,
         totalVirtualVolume: (totalOrdersValue._sum.fillPrice ?? 0) * 1,

@@ -30,6 +30,12 @@ Thumbs.db
 *.log
 npm-debug.log*
 
+# Playwright
+e2e/.auth/user.json
+e2e/reports/
+e2e/playwright-report/
+test-results/
+
 # TypeScript
 *.tsbuildinfo
 

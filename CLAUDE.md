@@ -112,4 +112,33 @@ Use `window.Capacitor.getPlatform()` for platform detection — more reliable th
 Client components use SWR with a `fetch` fetcher. After order placement, call `mutate('/api/portfolio')` and `mutate('/api/orders')` to refresh immediately.
 
 ### Leaderboard
-`/api/leaderboard` is public (no auth). Ranking formula: `totalReturnPct = (cashBalance + holdingsValue - invested) / invested * 100`. `invested = 10000 + totalTopUps * 10000` (accounts for purchased virtual cash). Names masked: "Alex Johnson" → "Alex J."
+`/api/leaderboard` is public (no auth). Returns two separate rankings from one query:
+- `leaderboard` — top 10 sorted by `totalReturnPct` (best strategy)
+- `richest` — single entry with highest absolute `totalValue` (used for the "World's Richest Trader" banner)
+
+Formula: `totalReturnPct = (cashBalance + holdingsValue - invested) / invested * 100`. `invested = 10000 + totalTopUps * 10000`. Names masked: "Alex Johnson" → "Alex J."
+
+### Options Trading
+Paper options priced via Black-Scholes in `src/lib/simulation.ts`. Key exports: `blackScholes(S,K,T,r,sigma,type)`, `generateOptionChain(symbol, currentPrice, sector)`, `deriveImpliedVolatility(sector)`.
+
+Chain: 9 strikes (×0.80–1.20 from spot) × 7 expiries (4 weekly Fridays + 3 monthly last-Fridays) × CALL+PUT = up to 126 contracts per symbol. Contracts are upserted lazily in `/api/options/[symbol]` when fewer than 10 non-expired remain.
+
+Options expiration runs inside the existing `$transaction` in `/api/simulation/tick` — ITM positions settle at intrinsic value, cash credited, status → `EXPIRED`.
+
+### Leagues
+Private 30-day competitions. Models: `League`, `LeagueMember`, `LeagueInvite`.
+
+`startingPortfolio` is snapshotted at join time (not account creation) for fair growth% comparison. Leaderboard formula: `growthPct = (currentValue - startingPortfolio) / startingPortfolio * 100`.
+
+Lazy finalization: on any GET to `/api/leagues/[id]` after `endsAt < now`, the route sets `status = 'ENDED'`, computes final ranks, and writes `LeagueMember.finalPortfolio` + `rank` — no background job needed.
+
+Invites are by phone number (existing users only). Token-based join link: `/leagues/[id]/join?token=X`. The join page is a client component that auto-POSTs on mount (server components can't forward cookies to their own API).
+
+### Premium Feature Gate
+Both Options Trading and Leagues require `user.totalTopUps >= 1` (any cash pack purchase). Gate pattern used in all gated API routes:
+```ts
+if (!user || user.totalTopUps < 1) {
+  return NextResponse.json({ error: '...', upgradeRequired: true }, { status: 403 })
+}
+```
+Frontend detects `upgradeRequired: true` on a 403 to open `GetMoreCashModal`.
