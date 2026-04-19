@@ -13,7 +13,7 @@ interface Invite {
   inviterName: string
 }
 
-export default function InviteBanner({ invites }: { invites: Invite[] }) {
+export default function InviteBanner({ invites, onAction }: { invites: Invite[]; onAction?: () => void }) {
   const router = useRouter()
   const [loading, setLoading] = useState<string | null>(null)
 
@@ -30,8 +30,8 @@ export default function InviteBanner({ invites }: { invites: Invite[] }) {
       const data = await res.json()
       if (!res.ok) { toast.error(data.error || 'Failed to join'); return }
       toast.success(`Joined ${invite.leagueName}!`)
+      onAction?.()
       router.push(`/leagues/${invite.leagueId}`)
-      router.refresh()
     } finally {
       setLoading(null)
     }
@@ -40,12 +40,15 @@ export default function InviteBanner({ invites }: { invites: Invite[] }) {
   async function decline(invite: Invite) {
     setLoading(invite.id + '-decline')
     try {
-      await fetch(`/api/leagues/${invite.leagueId}/invite/decline`, {
+      const res = await fetch(`/api/leagues/${invite.leagueId}/invite/decline`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: invite.token }),
       })
-      router.refresh()
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error || 'Failed to decline'); return }
+      toast.success('Invite declined')
+      onAction?.()
     } finally {
       setLoading(null)
     }

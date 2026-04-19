@@ -85,7 +85,7 @@ export default function LeaguesPage() {
         </button>
       </div>
 
-      <InviteBanner invites={pendingInvites} />
+      <InviteBanner invites={pendingInvites} onAction={mutate} />
 
       {leagues.length === 0 ? (
         <div className="card p-12 text-center">

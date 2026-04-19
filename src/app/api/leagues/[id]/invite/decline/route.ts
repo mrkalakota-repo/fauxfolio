@@ -21,8 +21,14 @@ export async function POST(
     }))?.phone ?? ''
 
     const invite = await prisma.leagueInvite.findUnique({ where: { token } })
-    if (!invite || invite.leagueId !== leagueId || invite.inviteePhone !== userPhone) {
-      return NextResponse.json({ error: 'Invalid invite' }, { status: 400 })
+    if (!invite || invite.leagueId !== leagueId) {
+      return NextResponse.json({ error: 'Invalid invite token' }, { status: 400 })
+    }
+    if (invite.status !== 'PENDING') {
+      return NextResponse.json({ error: 'Invite has already been used' }, { status: 400 })
+    }
+    if (invite.inviteePhone !== userPhone) {
+      return NextResponse.json({ error: 'This invite is not for your account' }, { status: 403 })
     }
 
     await prisma.leagueInvite.update({
