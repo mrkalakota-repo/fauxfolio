@@ -24,9 +24,11 @@ interface LeaderboardEntry {
   rank: number
   id: string
   name: string
+  grossValue: number
   totalValue: number
   totalReturn: number
   totalReturnPct: number
+  optionsPnl: number
   joinedAt: string
 }
 
@@ -271,7 +273,7 @@ export default function LandingPage() {
                     {entry.name.charAt(0)}
                   </div>
                   <div className="text-sm font-bold mb-1 truncate w-full">{entry.name}</div>
-                  <div className="text-xs text-gray-500 mb-2">{formatCurrency(entry.totalValue)}</div>
+                  <div className="text-xs text-gray-500 mb-2">{formatCurrency(entry.grossValue)}</div>
                   <div className={cn(
                     'text-sm font-black px-2 py-0.5 rounded-lg',
                     entry.totalReturnPct >= 0
@@ -289,10 +291,11 @@ export default function LandingPage() {
         {/* Full table */}
         <div className="card overflow-hidden">
           {/* Header */}
-          <div className="px-5 py-4 border-b border-brand-border flex items-center justify-between">
+          <div className="px-5 py-4 border-b border-brand-border flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <Trophy className="w-4 h-4 text-yellow-400" />
               <span className="font-semibold">Leaderboard</span>
+              <span className="text-xs text-gray-500 hidden sm:inline">Ranked by stock trading return — options P&L excluded</span>
             </div>
             <div className="flex items-center gap-1.5 text-xs text-green-400">
               <Circle className="w-1.5 h-1.5 fill-green-400" />
@@ -352,10 +355,23 @@ export default function LandingPage() {
 
                     {/* Name + joined */}
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm flex items-center gap-2">
+                      <div className="font-semibold text-sm flex items-center gap-2 flex-wrap">
                         {entry.name}
                         {entry.rank === 1 && (
                           <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+                        )}
+                        {entry.optionsPnl !== 0 && (
+                          <span
+                            className={cn(
+                              'text-xs px-1.5 py-0.5 rounded font-medium',
+                              entry.optionsPnl > 0
+                                ? 'bg-purple-500/15 text-purple-400'
+                                : 'bg-red-500/10 text-red-400/80'
+                            )}
+                            title={`Options P&L: ${entry.optionsPnl >= 0 ? '+' : ''}${formatCurrency(entry.optionsPnl)} (excluded from rank)`}
+                          >
+                            OPT {entry.optionsPnl >= 0 ? '+' : ''}{formatCurrency(entry.optionsPnl)}
+                          </span>
                         )}
                       </div>
                       <div className="text-xs text-gray-600 mt-0.5">
@@ -365,7 +381,7 @@ export default function LandingPage() {
 
                     {/* Portfolio value */}
                     <div className="text-right hidden sm:block">
-                      <div className="text-sm font-semibold">{formatCurrency(entry.totalValue)}</div>
+                      <div className="text-sm font-semibold">{formatCurrency(entry.grossValue)}</div>
                       <div className="text-xs text-gray-500">portfolio value</div>
                     </div>
 
@@ -432,7 +448,7 @@ export default function LandingPage() {
               </p>
               <p className="text-lg font-black text-white truncate">{richest.name}</p>
               <p className="text-sm text-yellow-200/60 mt-0.5">
-                Portfolio value: <span className="font-bold text-yellow-300">{formatCurrency(richest.totalValue)}</span>
+                Portfolio value: <span className="font-bold text-yellow-300">{formatCurrency(richest.grossValue)}</span>
                 <span className="mx-2 text-yellow-500/40">·</span>
                 Return: <span className={cn('font-bold', richest.totalReturnPct >= 0 ? 'text-green-400' : 'text-red-400')}>
                   {richest.totalReturnPct >= 0 ? '+' : ''}{richest.totalReturnPct.toFixed(1)}%

@@ -128,6 +128,11 @@ export async function searchSymbols(query: string): Promise<SearchResult[]> {
   }
 }
 
+export async function getVix(): Promise<number | null> {
+  const quote = await getQuote('^VIX')
+  return quote ? quote.c : null
+}
+
 // Resolution + epoch range for each chart timeframe
 export function candleParams(range: string): { resolution: string; from: number; to: number } {
   const now = Math.floor(Date.now() / 1000)

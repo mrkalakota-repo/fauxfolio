@@ -19,6 +19,8 @@ export async function GET() {
     })
 
     const now = new Date()
+    const marketState = await prisma.marketState.findFirst()
+    const vix = marketState?.vix ?? 20
 
     const enriched = positions.map(p => {
       const { contract } = p
@@ -26,7 +28,7 @@ export async function GET() {
         (contract.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 365),
         0
       )
-      const sigma = deriveImpliedVolatility(contract.stock.sector)
+      const sigma = deriveImpliedVolatility(contract.stock.sector, vix)
       const { price: markPerShare } = T > 0
         ? blackScholes(contract.stock.currentPrice, contract.strikePrice, T, 0.05, sigma, contract.optionType as 'CALL' | 'PUT')
         : { price: 0 }

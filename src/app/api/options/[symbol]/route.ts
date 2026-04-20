@@ -42,7 +42,9 @@ export async function GET(
       orderBy: [{ expiresAt: 'asc' }, { strikePrice: 'asc' }],
     })
 
-    const sigma = deriveImpliedVolatility(stock.sector)
+    const marketState = await prisma.marketState.findFirst()
+    const vix = marketState?.vix ?? 20
+    const sigma = deriveImpliedVolatility(stock.sector, vix)
     const r = 0.05
 
     const enriched = contracts.map(c => {

@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
         name: true,
         cashBalance: true,
         totalTopUps: true,
+        optionsPnl: true,
         createdAt: true,
         holdings: {
           include: {
@@ -33,7 +34,11 @@ export async function GET(req: NextRequest) {
       const holdingsValue = user.holdings.reduce(
         (sum, h) => sum + h.stock.currentPrice * h.shares, 0
       )
-      const totalValue = user.cashBalance + holdingsValue
+      // True portfolio value (includes options P&L via cashBalance)
+      const grossValue = user.cashBalance + holdingsValue
+      // Stock-only value used for rankings — options P&L excluded for fairness
+      // (simulated premiums shouldn't determine rank)
+      const totalValue = user.cashBalance - user.optionsPnl + holdingsValue
       const invested = 10000 + user.totalTopUps * 10000
       const totalReturn = totalValue - invested
       const totalReturnPct = (totalReturn / invested) * 100
@@ -41,9 +46,11 @@ export async function GET(req: NextRequest) {
       return {
         id: user.id,
         name: maskName(user.name),
+        grossValue,
         totalValue,
         cashBalance: user.cashBalance,
         holdingsValue,
+        optionsPnl: user.optionsPnl,
         totalReturn,
         totalReturnPct,
         invested,
@@ -57,9 +64,9 @@ export async function GET(req: NextRequest) {
       .slice(0, 10)
       .map((entry, index) => ({ ...entry, rank: index + 1 }))
 
-    // Richest trader by absolute portfolio value
+    // Richest trader by absolute portfolio value (true gross value including options)
     const richest = computed.reduce(
-      (best, u) => (u.totalValue > best.totalValue ? u : best),
+      (best, u) => (u.grossValue > best.grossValue ? u : best),
       computed[0] ?? null
     )
 

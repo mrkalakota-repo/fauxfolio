@@ -14,6 +14,7 @@ model User {
   name         String
   cashBalance  Float    @default(10000)
   totalTopUps  Int      @default(0)
+  optionsPnl   Float    @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -314,4 +315,12 @@ model UserBadge {
 
   @@unique([userId, badge])
   @@map("user_badges")
+}
+
+model MarketState {
+  id        Int      @id @default(1)
+  vix       Float    @default(20)
+  updatedAt DateTime @updatedAt
+
+  @@map("market_state")
 }

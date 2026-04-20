@@ -44,8 +44,10 @@ export async function POST(req: NextRequest) {
     }
 
     const now = new Date()
+    const marketState = await prisma.marketState.findFirst()
+    const vix = marketState?.vix ?? 20
     const T = (contract.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 365)
-    const sigma = deriveImpliedVolatility(contract.stock.sector)
+    const sigma = deriveImpliedVolatility(contract.stock.sector, vix)
     const { price: premiumPerShare } = blackScholes(
       contract.stock.currentPrice,
       contract.strikePrice,
@@ -94,10 +96,14 @@ export async function POST(req: NextRequest) {
     const closeContracts = Math.min(numContracts, openPosition.contracts)
     const proceeds = premiumPerShare * 100 * closeContracts
 
+    const optionsPnlDelta = proceeds - openPosition.premiumPaid
     const updated = await prisma.$transaction(async tx => {
       await tx.user.update({
         where: { id: session.userId },
-        data: { cashBalance: { increment: proceeds } },
+        data: {
+          cashBalance: { increment: proceeds },
+          optionsPnl: { increment: optionsPnlDelta },
+        },
       })
       return tx.optionPosition.update({
         where: { id: openPosition.id },

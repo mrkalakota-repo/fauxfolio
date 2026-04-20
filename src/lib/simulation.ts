@@ -149,8 +149,10 @@ const SECTOR_IV: Record<string, number> = {
   ETF: 0.20,
 }
 
-export function deriveImpliedVolatility(sector: string): number {
-  return SECTOR_IV[sector] ?? 0.30
+export function deriveImpliedVolatility(sector: string, vix: number = 20): number {
+  const base = SECTOR_IV[sector] ?? 0.30
+  // Scale by VIX normalised to a baseline of 20 (typical long-run average)
+  return base * (vix / 20)
 }
 
 export interface OptionChainContract {

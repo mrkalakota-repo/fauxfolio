@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { simulateBatchPriceTick, checkLimitOrders } from '@/lib/simulation'
-import { getQuote, hasRealData, isMarketOpen } from '@/lib/finnhub'
+import { getQuote, getVix, hasRealData, isMarketOpen } from '@/lib/finnhub'
 import { getSessionUserFromRequest } from '@/lib/auth'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rateLimit'
 import { checkAndAwardBadges } from '@/lib/badges'
@@ -54,6 +54,16 @@ export async function POST(req: NextRequest) {
       // Stocks not refreshed this tick keep current price
       for (const s of stocks) {
         if (!(s.symbol in newPrices)) newPrices[s.symbol] = s.currentPrice
+      }
+
+      // Update VIX (1 extra call, well within 60/min limit)
+      const vixValue = await getVix()
+      if (vixValue && vixValue > 0) {
+        await prisma.marketState.upsert({
+          where: { id: 1 },
+          create: { id: 1, vix: vixValue },
+          update: { vix: vixValue },
+        })
       }
     } else {
       // Simulate prices when market closed or no API key
@@ -265,12 +275,15 @@ export async function POST(req: NextRequest) {
             },
           })
 
-          if (settlement > 0) {
-            await tx.user.update({
-              where: { id: pos.userId },
-              data: { cashBalance: { increment: settlement } },
-            })
-          }
+          // Track realized options P&L (positive = profit, negative = loss)
+          const optionsPnlDelta = settlement - pos.premiumPaid
+          await tx.user.update({
+            where: { id: pos.userId },
+            data: {
+              ...(settlement > 0 ? { cashBalance: { increment: settlement } } : {}),
+              optionsPnl: { increment: optionsPnlDelta },
+            },
+          })
         }
       }
 
