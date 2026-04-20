@@ -246,7 +246,7 @@ export default function LandingPage() {
             <span className="text-sm font-semibold uppercase tracking-widest">Global Rankings</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-black mb-3">Top 10 Folios Worldwide</h2>
-          <p className="text-gray-400">Ranked by total return % on starting investment</p>
+          <p className="text-gray-400">Ranked by total return % on the investment</p>
         </div>
 
         {/* Top 3 podium */}

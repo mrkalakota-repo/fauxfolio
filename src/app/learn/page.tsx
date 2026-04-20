@@ -5,7 +5,20 @@ import {
   ChevronRight, Clock, Globe,
 } from 'lucide-react'
 
-export const metadata = { title: 'Trading 101 — FauxFolio' }
+export const metadata = {
+  title: 'Trading 101 — Learn Stock Market Investing',
+  description: 'Learn stock market investing from scratch. Covers market orders, limit orders, options trading, portfolio diversification, risk management, and how to read stock charts.',
+  keywords: [
+    'how to trade stocks', 'stock market for beginners', 'learn investing', 'options trading basics',
+    'market orders vs limit orders', 'portfolio diversification', 'risk management investing',
+    'stock market education', 'trading strategies', 'investing 101',
+  ],
+  openGraph: {
+    title: 'Trading 101 — Learn Stock Market Investing | FauxFolio',
+    description: 'Free beginner guide to stock market investing. Learn orders, options, diversification, and risk management.',
+    type: 'article',
+  },
+}
 
 function Section({ id, icon, title, color, children }: {
   id: string
