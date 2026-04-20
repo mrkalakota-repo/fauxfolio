@@ -20,6 +20,7 @@ export default function TournamentsPage() {
   const entryStatus: string = data?.entryStatus ?? 'NONE'
   const entryId: string | null = data?.entryId ?? null
   const previousWinner = data?.previousWinner
+  const registrationOpen: boolean = data?.registrationOpen ?? true
 
   const { data: lbData } = useSWR(
     tournament ? `/api/tournaments/${tournament.id}/leaderboard` : null,
@@ -150,6 +151,10 @@ export default function TournamentsPage() {
               </div>
             ) : entryStatus === 'ENDED' ? (
               <div className="text-sm text-gray-400">Tournament ended</div>
+            ) : !registrationOpen ? (
+              <div className="text-sm text-gray-400 flex items-center gap-2">
+                <Clock className="w-4 h-4" /> Registration closed — join by the 5th next month
+              </div>
             ) : (
               <button
                 onClick={handleEnter}
@@ -161,9 +166,9 @@ export default function TournamentsPage() {
           </div>
         </div>
 
-        {entryStatus === 'NONE' && (
+        {entryStatus === 'NONE' && registrationOpen && (
           <p className="text-xs text-gray-500 mt-3">
-            $20,000 virtual cash · Trading limited to market hours · Remaining balance credited to your account at month end
+            $20,000 virtual cash · Join by the 5th of each month · Trading limited to market hours · Remaining balance credited to your account at month end
           </p>
         )}
       </div>

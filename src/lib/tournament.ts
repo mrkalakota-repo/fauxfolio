@@ -1,5 +1,8 @@
 import { prisma } from '@/lib/db'
 
+// Registration closes at 00:00 AM EST on the 6th of each month (end of the 5th)
+const REGISTRATION_CLOSE_DAY = 6
+
 export function getCurrentMonthBounds() {
   const now = new Date()
   const month = now.getMonth() + 1
@@ -7,6 +10,20 @@ export function getCurrentMonthBounds() {
   const startsAt = new Date(year, month - 1, 1, 0, 0, 0)
   const endsAt = new Date(year, month, 0, 23, 59, 59, 999)
   return { month, year, startsAt, endsAt }
+}
+
+export function isRegistrationOpen(): boolean {
+  // Get current day-of-month in EST
+  const nowET = new Date(
+    new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })
+  )
+  return nowET.getDate() < REGISTRATION_CLOSE_DAY
+}
+
+export function getRegistrationDeadline(month: number, year: number): Date {
+  // Midnight EST on the 6th = registration closes after 5th
+  const deadline = new Date(`${year}-${String(month).padStart(2, '0')}-0${REGISTRATION_CLOSE_DAY}T00:00:00`)
+  return deadline
 }
 
 export async function getOrCreateCurrentTournament() {

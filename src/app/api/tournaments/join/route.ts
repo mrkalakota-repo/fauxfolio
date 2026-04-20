@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSessionUser } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { stripe, hasStripe, TOURNAMENT_ENTRY_CENTS } from '@/lib/stripe'
-import { getOrCreateCurrentTournament } from '@/lib/tournament'
+import { getOrCreateCurrentTournament, isRegistrationOpen } from '@/lib/tournament'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rateLimit'
 
 export async function POST(req: NextRequest) {
@@ -17,6 +17,13 @@ export async function POST(req: NextRequest) {
 
     if (tournament.status === 'ENDED') {
       return NextResponse.json({ error: 'This tournament has ended' }, { status: 400 })
+    }
+
+    if (!isRegistrationOpen()) {
+      return NextResponse.json(
+        { error: 'Registration is closed. You can only join during the first 5 days of the month.' },
+        { status: 400 }
+      )
     }
 
     const existing = await prisma.tournamentEntry.findUnique({

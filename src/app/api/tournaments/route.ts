@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getSessionUser } from '@/lib/auth'
-import { getOrCreateCurrentTournament, finalizeTournament, maskName, formatMonth } from '@/lib/tournament'
+import { getOrCreateCurrentTournament, finalizeTournament, maskName, formatMonth, isRegistrationOpen } from '@/lib/tournament'
 
 export async function GET() {
   try {
@@ -95,6 +95,7 @@ export async function GET() {
       entryId,
       winner,
       previousWinner,
+      registrationOpen: isRegistrationOpen(),
     })
   } catch (error) {
     console.error('[tournaments/current]', error)
