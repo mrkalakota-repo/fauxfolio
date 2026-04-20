@@ -17,15 +17,17 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  holdings          Holding[]
-  orders            Order[]
-  watchlistItems    WatchlistItem[]
-  portfolioHistory  PortfolioSnapshot[]
-  transactions      Transaction[]
-  optionPositions   OptionPosition[]
-  createdLeagues    League[]         @relation("LeagueCreator")
-  leagueMemberships LeagueMember[]
-  sentLeagueInvites LeagueInvite[]   @relation("LeagueInviter")
+  holdings           Holding[]
+  orders             Order[]
+  watchlistItems     WatchlistItem[]
+  portfolioHistory   PortfolioSnapshot[]
+  transactions       Transaction[]
+  optionPositions    OptionPosition[]
+  createdLeagues     League[]         @relation("LeagueCreator")
+  leagueMemberships  LeagueMember[]
+  sentLeagueInvites  LeagueInvite[]   @relation("LeagueInviter")
+  tournamentEntries  TournamentEntry[]
+  badges             UserBadge[]
 
   @@map("users")
 }
@@ -47,11 +49,13 @@ model Stock {
   priceUpdatedAt DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  holdings        Holding[]
-  orders          Order[]
-  watchlistItems  WatchlistItem[]
-  priceHistory    PriceHistory[]
-  optionContracts OptionContract[]
+  holdings           Holding[]
+  orders             Order[]
+  watchlistItems     WatchlistItem[]
+  priceHistory       PriceHistory[]
+  optionContracts    OptionContract[]
+  tournamentHoldings TournamentHolding[]
+  tournamentOrders   TournamentOrder[]
 
   @@map("stocks")
 }
@@ -227,4 +231,87 @@ model LeagueInvite {
 
   @@index([inviteePhone, status])
   @@map("league_invites")
+}
+
+model Tournament {
+  id        String   @id @default(cuid())
+  month     Int
+  year      Int
+  startsAt  DateTime
+  endsAt    DateTime
+  status    String   @default("ACTIVE") // ACTIVE | ENDED
+  createdAt DateTime @default(now())
+
+  entries TournamentEntry[]
+
+  @@unique([month, year])
+  @@index([status, endsAt])
+  @@map("tournaments")
+}
+
+model TournamentEntry {
+  id              String    @id @default(cuid())
+  tournamentId    String
+  userId          String
+  cashBalance     Float     @default(20000)
+  stripeSessionId String?   @unique
+  status          String    @default("PENDING") // PENDING | ACTIVE | ENDED
+  finalBalance    Float?
+  rank            Int?
+  creditedAt      DateTime?
+  joinedAt        DateTime  @default(now())
+
+  tournament Tournament        @relation(fields: [tournamentId], references: [id])
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  holdings   TournamentHolding[]
+  orders     TournamentOrder[]
+
+  @@unique([tournamentId, userId])
+  @@map("tournament_entries")
+}
+
+model TournamentHolding {
+  id          String   @id @default(cuid())
+  entryId     String
+  stockSymbol String
+  shares      Float
+  avgCost     Float
+  updatedAt   DateTime @updatedAt
+
+  entry TournamentEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  stock Stock           @relation(fields: [stockSymbol], references: [symbol])
+
+  @@unique([entryId, stockSymbol])
+  @@map("tournament_holdings")
+}
+
+model TournamentOrder {
+  id          String    @id @default(cuid())
+  entryId     String
+  stockSymbol String
+  type        String    // MARKET | LIMIT
+  side        String    // BUY | SELL
+  shares      Float
+  limitPrice  Float?
+  fillPrice   Float?
+  status      String    @default("PENDING") // PENDING | FILLED | CANCELLED
+  createdAt   DateTime  @default(now())
+  filledAt    DateTime?
+
+  entry TournamentEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  stock Stock           @relation(fields: [stockSymbol], references: [symbol])
+
+  @@map("tournament_orders")
+}
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  userId    String
+  badge     String   // PEAK_100K | PEAK_1M | PEAK_10M | PEAK_100M | PEAK_1B
+  awardedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badge])
+  @@map("user_badges")
 }

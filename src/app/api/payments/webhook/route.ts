@@ -32,31 +32,41 @@ export async function POST(req: NextRequest) {
     }
 
     await prisma.$transaction(async tx => {
-      // Look up transaction by Stripe session ID — use OUR record, not Stripe metadata
+      // Check cash top-up transaction first
       const transaction = await tx.transaction.findUnique({
         where: { stripeSessionId: stripeSession.id },
       })
 
-      // Idempotency: skip if already completed or not found
-      if (!transaction || transaction.status === 'COMPLETED') return
+      if (transaction) {
+        // Idempotency: skip if already completed
+        if (transaction.status === 'COMPLETED') return
 
-      // Validate the virtual amount matches what we recorded — never trust metadata
-      const virtualAmount = transaction.virtualAmount
+        const virtualAmount = transaction.virtualAmount
+        await tx.transaction.update({
+          where: { id: transaction.id },
+          data: { status: 'COMPLETED' },
+        })
+        const topUpUnits = Math.round(virtualAmount / 10_000)
+        await tx.user.update({
+          where: { id: transaction.userId },
+          data: {
+            cashBalance: { increment: virtualAmount },
+            totalTopUps: { increment: topUpUnits },
+          },
+        })
+        return
+      }
 
-      await tx.transaction.update({
-        where: { id: transaction.id },
-        data: { status: 'COMPLETED' },
+      // Check tournament entry
+      const entry = await tx.tournamentEntry.findUnique({
+        where: { stripeSessionId: stripeSession.id },
       })
-
-      const topUpUnits = Math.round(virtualAmount / 10_000)
-
-      await tx.user.update({
-        where: { id: transaction.userId },
-        data: {
-          cashBalance: { increment: virtualAmount },
-          totalTopUps: { increment: topUpUnits },
-        },
-      })
+      if (entry && entry.status === 'PENDING') {
+        await tx.tournamentEntry.update({
+          where: { id: entry.id },
+          data: { status: 'ACTIVE' },
+        })
+      }
     })
   }
 

@@ -9,6 +9,7 @@ import toast from 'react-hot-toast'
 import { formatCurrency, formatPercent, formatChange, getChangeColor, cn } from '@/lib/utils'
 import PortfolioChart from '@/components/charts/PortfolioChart'
 import StockRow from '@/components/StockRow'
+import BadgeStrip from '@/components/BadgeStrip'
 import type { Portfolio, Stock } from '@/types'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
@@ -21,6 +22,7 @@ export default function DashboardPage() {
   const { data: stocksData } = useSWR<{ stocks: Stock[]; marketOpen: boolean }>(
     '/api/stocks', fetcher, { refreshInterval: 8000 }
   )
+  const { data: badgesData } = useSWR('/api/users/badges', fetcher)
 
   // Handle Stripe redirect result
   useEffect(() => {
@@ -96,6 +98,12 @@ export default function DashboardPage() {
           loading={portLoading}
           valueColor={getChangeColor(portfolio?.totalGainLoss ?? 0)}
         />
+      </div>
+
+      {/* Achievement Badges */}
+      <div className="card p-5">
+        <h2 className="font-semibold mb-3 text-sm text-gray-400 uppercase tracking-wider">Achievements</h2>
+        <BadgeStrip badges={badgesData?.badges ?? []} />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

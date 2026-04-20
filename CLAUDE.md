@@ -166,3 +166,18 @@ if (!user || user.totalTopUps < 1) {
 }
 ```
 Frontend detects `upgradeRequired: true` on a 403 to open `GetMoreCashModal`.
+
+### API Conventions
+- **Date serialization**: NextResponse.json() does not serialize `Date` objects — call `.toISOString()` manually on all Date fields before returning.
+- **Input validation**: stock symbol must match `/^[A-Za-z]{1,5}$/`; share quantities 1–1,000,000. Validate at the top of each route before any DB access.
+- **Rate limiting key**: IP extracted from `x-forwarded-for` (first segment) for auth/register/leaderboard; `userId:ip` for tick. Cleanup runs on a 5-minute interval.
+
+### Security Patterns
+- **Timing-safe login**: if user not found, bcrypt compares against a dummy hash so response time doesn't reveal whether the phone number exists.
+- **CSP**: headers set in `next.config.js` — allows Finnhub and Turnstile externals, blocks `frame-ancestors`, restricts `unsafe-eval` to scripts only. Auth and payment endpoints set `Cache-Control: no-store`.
+
+### Market Hours
+`isMarketOpen()` in `src/lib/finnhub.ts` checks 9:30 AM–4:00 PM ET Mon–Fri using `Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York' })`. Used by the tick route to decide between real Finnhub prices and GBM simulation.
+
+### Styling
+Tailwind uses custom `brand.*` tokens: `brand-dark` (page background), `brand-surface` (card background), `brand-border`, `brand-muted`. Custom animations: `ticker` (40 s marquee loop), `priceUp`/`priceDown` (0.5 s highlight flash), `slideUp`/`fadeIn` (0.3 s entry). Remote image domains (Clearbit logos, ui-avatars) are allowlisted in `next.config.js` under `remotePatterns`.

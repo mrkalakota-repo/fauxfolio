@@ -4,6 +4,7 @@ import { simulateBatchPriceTick, checkLimitOrders } from '@/lib/simulation'
 import { getQuote, hasRealData, isMarketOpen } from '@/lib/finnhub'
 import { getSessionUserFromRequest } from '@/lib/auth'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rateLimit'
+import { checkAndAwardBadges } from '@/lib/badges'
 
 // How many stocks to refresh from Finnhub per tick (respects 60 req/min limit)
 const BATCH_SIZE = 5
@@ -135,6 +136,106 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // Fill PENDING MARKET orders and tournament orders (only during real market hours)
+      if (isMarketOpen()) {
+        // Regular PENDING MARKET orders — cash was reserved at placement for BUY
+        const pendingMarketOrders = await tx.order.findMany({
+          where: { status: 'PENDING', type: 'MARKET' },
+          select: { id: true, side: true, stockSymbol: true, userId: true, shares: true },
+        })
+
+        for (const order of pendingMarketOrders) {
+          const fillPrice = newPrices[order.stockSymbol]
+          if (!fillPrice) continue
+          const totalCost = fillPrice * order.shares
+
+          await tx.order.update({
+            where: { id: order.id },
+            data: { status: 'FILLED', fillPrice, filledAt: new Date() },
+          })
+
+          if (order.side === 'BUY') {
+            // Cash already reserved at placement — update holding only
+            const existing = await tx.holding.findUnique({
+              where: { userId_stockSymbol: { userId: order.userId, stockSymbol: order.stockSymbol } },
+            })
+            if (existing) {
+              const ns = existing.shares + order.shares
+              const nc = (existing.avgCost * existing.shares + totalCost) / ns
+              await tx.holding.update({ where: { id: existing.id }, data: { shares: ns, avgCost: nc } })
+            } else {
+              await tx.holding.create({
+                data: { userId: order.userId, stockSymbol: order.stockSymbol, shares: order.shares, avgCost: fillPrice },
+              })
+            }
+          } else {
+            // SELL: credit cash now
+            await tx.user.update({ where: { id: order.userId }, data: { cashBalance: { increment: totalCost } } })
+            const existing = await tx.holding.findUnique({
+              where: { userId_stockSymbol: { userId: order.userId, stockSymbol: order.stockSymbol } },
+            })
+            if (existing) {
+              const ns = existing.shares - order.shares
+              if (ns <= 0.0001) await tx.holding.delete({ where: { id: existing.id } })
+              else await tx.holding.update({ where: { id: existing.id }, data: { shares: ns } })
+            }
+          }
+        }
+
+        // Tournament PENDING orders (MARKET + LIMIT) — only fill during real market hours
+        const pendingTournamentOrders = await tx.tournamentOrder.findMany({
+          where: { status: 'PENDING' },
+          include: { entry: { select: { id: true, cashBalance: true } } },
+        })
+
+        for (const order of pendingTournamentOrders) {
+          const fillPrice = newPrices[order.stockSymbol]
+          if (!fillPrice) continue
+
+          if (order.type === 'LIMIT') {
+            const triggered = order.side === 'BUY' ? fillPrice <= order.limitPrice! : fillPrice >= order.limitPrice!
+            if (!triggered) continue
+          }
+
+          const totalCost = fillPrice * order.shares
+
+          await tx.tournamentOrder.update({
+            where: { id: order.id },
+            data: { status: 'FILLED', fillPrice, filledAt: new Date() },
+          })
+
+          if (order.side === 'BUY') {
+            // Cash already reserved for both MARKET and LIMIT BUY
+            const existing = await tx.tournamentHolding.findUnique({
+              where: { entryId_stockSymbol: { entryId: order.entryId, stockSymbol: order.stockSymbol } },
+            })
+            if (existing) {
+              const ns = existing.shares + order.shares
+              const nc = (existing.avgCost * existing.shares + totalCost) / ns
+              await tx.tournamentHolding.update({ where: { id: existing.id }, data: { shares: ns, avgCost: nc } })
+            } else {
+              await tx.tournamentHolding.create({
+                data: { entryId: order.entryId, stockSymbol: order.stockSymbol, shares: order.shares, avgCost: fillPrice },
+              })
+            }
+          } else {
+            // SELL: credit cash to entry
+            await tx.tournamentEntry.update({
+              where: { id: order.entryId },
+              data: { cashBalance: { increment: totalCost } },
+            })
+            const existing = await tx.tournamentHolding.findUnique({
+              where: { entryId_stockSymbol: { entryId: order.entryId, stockSymbol: order.stockSymbol } },
+            })
+            if (existing) {
+              const ns = existing.shares - order.shares
+              if (ns <= 0.0001) await tx.tournamentHolding.delete({ where: { id: existing.id } })
+              else await tx.tournamentHolding.update({ where: { id: existing.id }, data: { shares: ns } })
+            }
+          }
+        }
+      }
+
       // Expire options: settle ITM positions, expire OTM ones
       const expiredContracts = await tx.optionContract.findMany({
         where: { expiresAt: { lte: new Date() } },
@@ -193,13 +294,11 @@ export async function POST(req: NextRequest) {
         }),
       ])
       const snapHoldingsValue = snapHoldings.reduce((s, h) => s + h.stock.currentPrice * h.shares, 0)
+      const snapTotalValue = (snapUser?.cashBalance ?? 0) + snapHoldingsValue
       await prisma.portfolioSnapshot.create({
-        data: {
-          userId: session.userId,
-          totalValue: (snapUser?.cashBalance ?? 0) + snapHoldingsValue,
-          cashBalance: snapUser?.cashBalance ?? 0,
-        },
+        data: { userId: session.userId, totalValue: snapTotalValue, cashBalance: snapUser?.cashBalance ?? 0 },
       })
+      await checkAndAwardBadges(prisma, session.userId, snapTotalValue)
     }
 
     return NextResponse.json({

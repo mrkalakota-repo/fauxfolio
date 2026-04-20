@@ -7,7 +7,7 @@ import useSWR from 'swr'
 import {
   TrendingUp, LayoutDashboard, Briefcase, Star, ClipboardList,
   Search, LogOut, ChevronRight, AlertCircle, Menu, BarChart2,
-  Wallet, Circle, Loader2, BookOpen, Zap, Trophy,
+  Wallet, Circle, Loader2, BookOpen, Zap, Medal,
 } from 'lucide-react'
 import { cn, formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
@@ -17,12 +17,12 @@ import GetMoreCashModal from '@/components/GetMoreCashModal'
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
 const NAV_ITEMS = [
-  { href: '/dashboard',  label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/portfolio',  label: 'Portfolio',  icon: Briefcase },
-  { href: '/watchlist',  label: 'Watchlist',  icon: Star },
-  { href: '/markets',    label: 'Markets',    icon: BarChart2 },
-  { href: '/orders',     label: 'Orders',     icon: ClipboardList },
-  { href: '/leagues',    label: 'Leagues',    icon: Trophy },
+  { href: '/dashboard',    label: 'Dashboard',    icon: LayoutDashboard },
+  { href: '/portfolio',    label: 'Portfolio',    icon: Briefcase },
+  { href: '/watchlist',    label: 'Watchlist',    icon: Star },
+  { href: '/markets',      label: 'Markets',      icon: BarChart2 },
+  { href: '/orders',       label: 'Orders',       icon: ClipboardList },
+  { href: '/tournaments',  label: 'Tournaments',  icon: Medal },
 ]
 
 const LOW_BALANCE_THRESHOLD = 500
@@ -45,11 +45,9 @@ export default function AppShell({
 
   const { data: portfolioData } = useSWR('/api/portfolio', fetcher, { refreshInterval: 15000 })
   const { data: tickData } = useSWR('/api/simulation/tick', fetcher, { refreshInterval: 0 })
-  const { data: leaguesData } = useSWR('/api/leagues', fetcher, { refreshInterval: 30000 })
 
   const cashBalance = portfolioData?.user?.cashBalance ?? 0
   const marketOpen = tickData?.marketOpen ?? false
-  const pendingInviteCount: number = leaguesData?.pendingInvites?.length ?? 0
 
   useEffect(() => { setMobileOpen(false) }, [pathname])
 
@@ -146,7 +144,6 @@ export default function AppShell({
       <nav className="flex-1 space-y-1">
         {NAV_ITEMS.map(item => {
           const active = pathname === item.href || pathname.startsWith(item.href + '/')
-          const badge = item.href === '/leagues' && pendingInviteCount > 0
           return (
             <Link
               key={item.href}
@@ -160,11 +157,6 @@ export default function AppShell({
             >
               <item.icon className={cn('w-4 h-4', active ? 'text-green-400' : '')} />
               {item.label}
-              {badge && (
-                <span className="ml-auto w-4 h-4 bg-blue-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center">
-                  {pendingInviteCount}
-                </span>
-              )}
             </Link>
           )
         })}

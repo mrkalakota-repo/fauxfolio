@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionUser } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { isMarketOpen } from '@/lib/finnhub'
+import { checkAndAwardBadges } from '@/lib/badges'
 
 export async function GET() {
   const session = await getSessionUser()
@@ -83,7 +85,25 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // For MARKET orders, execute immediately in a transaction
+    // For MARKET orders outside market hours, queue as PENDING
+    if (type === 'MARKET' && !isMarketOpen()) {
+      if (side === 'BUY') {
+        await prisma.user.update({
+          where: { id: session.userId },
+          data: { cashBalance: { decrement: orderTotal } },
+        })
+      }
+      const order = await prisma.order.create({
+        data: { userId: session.userId, stockSymbol: symbol.toUpperCase(), type: 'MARKET', side, shares, status: 'PENDING' },
+      })
+      return NextResponse.json({
+        order: { ...order, createdAt: order.createdAt.toISOString(), filledAt: null },
+        message: 'Market is closed. Your order will execute at the next market open.',
+        pending: true,
+      })
+    }
+
+    // For MARKET orders during market hours, execute immediately in a transaction
     if (type === 'MARKET') {
       const result = await prisma.$transaction(async tx => {
         const order = await tx.order.create({
@@ -149,13 +169,12 @@ export async function POST(req: NextRequest) {
           include: { stock: { select: { currentPrice: true } } },
         })
         const holdingsValue = updatedHoldings.reduce((s, h) => s + h.stock.currentPrice * h.shares, 0)
+        const totalValue = (updatedUser?.cashBalance ?? 0) + holdingsValue
         await tx.portfolioSnapshot.create({
-          data: {
-            userId: session.userId,
-            totalValue: (updatedUser?.cashBalance ?? 0) + holdingsValue,
-            cashBalance: updatedUser?.cashBalance ?? 0,
-          },
+          data: { userId: session.userId, totalValue, cashBalance: updatedUser?.cashBalance ?? 0 },
         })
+
+        await checkAndAwardBadges(tx, session.userId, totalValue)
 
         return order
       })

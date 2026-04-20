@@ -4,8 +4,9 @@ import Link from 'next/link'
 import useSWR from 'swr'
 import {
   TrendingUp, Trophy, Globe, Shield, Zap,
-  BarChart2, BookOpen, ChevronRight, Circle, Star, ArrowUpRight, Crown,
+  BarChart2, BookOpen, ChevronRight, Circle, Star, ArrowUpRight, Crown, Medal, Share2,
 } from 'lucide-react'
+import { formatMonth } from '@/lib/tournament'
 import { cn, formatCurrency, formatPercent } from '@/lib/utils'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
@@ -108,6 +109,18 @@ const FEATURES = [
     desc: 'Compete with traders worldwide. Climb the ranks and prove your strategy works.',
     color: 'red',
   },
+  {
+    icon: <BarChart2 className="w-5 h-5" />,
+    title: 'Options Trading',
+    desc: 'Trade CALL & PUT options with Black-Scholes pricing. Buy and sell contracts across hundreds of stocks.',
+    color: 'purple',
+  },
+  {
+    icon: <Medal className="w-5 h-5" />,
+    title: 'Monthly Tournaments',
+    desc: 'Enter for $1.99 and compete with a fresh $20K balance. The best portfolio every month wins the crown.',
+    color: 'yellow',
+  },
 ]
 
 const FEATURE_COLORS: Record<string, string> = {
@@ -123,10 +136,22 @@ export default function LandingPage() {
   const { data, isLoading } = useSWR<LeaderboardData>(
     '/api/leaderboard', fetcher, { refreshInterval: 30000 }
   )
+  const { data: tournamentData } = useSWR('/api/tournaments/current', fetcher, { refreshInterval: 60000 })
 
   const leaderboard = data?.leaderboard ?? []
   const richest = data?.richest ?? null
   const stats = data?.stats
+  const previousWinner = tournamentData?.previousWinner ?? null
+
+  async function handleShareWinner(winner: { name: string; finalBalance: number | null; returnPct: string; certificateUrl: string; month: string }) {
+    const certUrl = `${window.location.origin}${winner.certificateUrl}`
+    const text = `${winner.name} won the FauxFolio ${winner.month} Tournament with a ${winner.returnPct}% return!`
+    if (navigator.share) {
+      navigator.share({ title: 'FauxFolio Tournament Champion', text, url: certUrl }).catch(() => {})
+    } else {
+      await navigator.clipboard.writeText(certUrl)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-brand-dark text-white">
@@ -420,6 +445,44 @@ export default function LandingPage() {
             >
               Beat them <ArrowUpRight className="w-3.5 h-3.5" />
             </Link>
+          </div>
+        </section>
+      )}
+
+      {/* Tournament Winner Banner */}
+      {previousWinner && (
+        <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-12">
+          <div className="relative overflow-hidden rounded-2xl border border-yellow-500/30 bg-gradient-to-r from-yellow-500/10 via-amber-500/5 to-yellow-500/10 px-6 py-5 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+            <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
+              <Medal className="w-6 h-6 text-yellow-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold uppercase tracking-widest text-yellow-500/80 mb-0.5">
+                🏆 {previousWinner.month} Tournament Champion
+              </p>
+              <p className="text-lg font-black text-white truncate">{previousWinner.name}</p>
+              <p className="text-sm text-yellow-200/60 mt-0.5">
+                Final balance: <span className="font-bold text-yellow-300">{previousWinner.finalBalance != null ? formatCurrency(previousWinner.finalBalance) : '—'}</span>
+                <span className="mx-2 text-yellow-500/40">·</span>
+                Return: <span className="font-bold text-green-400">+{previousWinner.returnPct}%</span>
+              </p>
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              <a
+                href={previousWinner.certificateUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 font-semibold text-sm px-3 py-2 rounded-xl transition-colors"
+              >
+                Certificate
+              </a>
+              <button
+                onClick={() => handleShareWinner(previousWinner)}
+                className="flex items-center gap-1.5 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm px-3 py-2 rounded-xl transition-colors"
+              >
+                <Share2 className="w-3.5 h-3.5" /> Share
+              </button>
+            </div>
           </div>
         </section>
       )}
