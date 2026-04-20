@@ -12,12 +12,19 @@ const TEST_SYMBOL = 'AAPL';
 
 test.describe('Options – premium gate', () => {
   test('non-premium user sees upgrade prompt when accessing options', async ({ page }) => {
-    // Intercept the options API to return a 403 with upgradeRequired flag
-    await page.route(`**/api/options/${TEST_SYMBOL}`, (route) => {
+    // OptionsPanel gates on totalTopUps from portfolio props — stub portfolio with 0 top-ups
+    await page.route('**/api/portfolio', (route) => {
       route.fulfill({
-        status: 403,
-        contentType: 'application/json',
-        body: JSON.stringify({ error: 'Premium required', upgradeRequired: true }),
+        json: {
+          user: { cashBalance: 10000, totalTopUps: 0, name: 'Test User' },
+          holdings: [],
+          totalValue: 10000,
+          dayChange: 0,
+          dayChangePercent: 0,
+          totalGainLoss: 0,
+          totalGainLossPercent: 0,
+          portfolioHistory: [],
+        },
       });
     });
 

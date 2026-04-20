@@ -2,10 +2,10 @@ import type { Page, Locator } from '@playwright/test';
 
 export type PackId = 'starter' | 'booster' | 'mega';
 
-const PACKS: Record<PackId, { price: string; virtualCash: string }> = {
-  starter: { price: '$1.00', virtualCash: '$10,000' },
-  booster: { price: '$2.99', virtualCash: '$50,000' },
-  mega:    { price: '$4.99', virtualCash: '$100,000' },
+const PACK_LABELS: Record<PackId, string> = {
+  starter: 'Starter Pack',
+  booster: 'Booster Pack',
+  mega:    'Mega Pack',
 };
 
 export class PaymentPage {
@@ -28,10 +28,10 @@ export class PaymentPage {
 
   /** In dev mode (no STRIPE_SECRET_KEY) this credits cash directly. */
   async purchasePack(packId: PackId) {
-    // Select the pack card by clicking the button that shows its virtual cash amount
+    // Select the pack card by its label — unique text that won't match the checkout button
     const packCard = this.modal
       .getByRole('button')
-      .filter({ hasText: PACKS[packId].virtualCash });
+      .filter({ hasText: PACK_LABELS[packId] });
     await packCard.click();
     // Then click the single checkout button (text changes to reflect selected pack)
     const checkoutBtn = this.modal.getByRole('button', { name: /get .+ for/i });

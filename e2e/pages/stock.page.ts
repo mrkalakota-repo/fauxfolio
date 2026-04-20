@@ -26,7 +26,8 @@ export class StockPage {
     this.orderConfirmModal = page.getByRole('dialog');
     this.confirmOrderButton = page.getByRole('button', { name: /confirm|place order/i });
     this.cancelOrderButton = page.getByRole('button', { name: /cancel/i });
-    this.orderSuccessMessage = page.getByText(/order (placed|filled|success)/i);
+    // Matches both immediate fill ("Order placed!") and after-hours queue message
+    this.orderSuccessMessage = page.getByText(/order (placed|filled|success|queued)|market is closed|order will execute/i);
     this.orderErrorMessage = page.getByRole('alert').or(
       page.getByText(/insufficient|not enough|error/i)
     );
@@ -47,6 +48,8 @@ export class StockPage {
   }
 
   async sellShares(quantity: number) {
+    // Switch to Sell tab first — button label is "Review Sell Order" only on sell side
+    await this.page.getByRole('button', { name: /^sell$/i }).click();
     await this.sharesInput.fill(String(quantity));
     await this.sellButton.click();
     await this.orderConfirmModal.waitFor({ state: 'visible' });

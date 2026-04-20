@@ -58,7 +58,7 @@ test.describe('Payments – happy path (dev mode)', () => {
     await payment.getSuccessText();
 
     // After top-up, options/leagues should no longer gate the user
-    const response = await page.request.get('/api/me');
+    const response = await page.request.get('/api/auth/me');
     const user = await response.json();
     expect(user.totalTopUps).toBeGreaterThanOrEqual(1);
   });

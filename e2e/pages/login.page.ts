@@ -12,8 +12,10 @@ export class LoginPage {
     this.page = page;
     // PhoneInput renders <input type="tel"> — no label association
     this.phoneInput = page.locator('input[type="tel"]');
-    // PinInput renders an opacity-0 <input type="password"> behind dot visuals
-    this.pinInput = page.locator('input[type="password"]');
+    // PinInput renders an opacity-0 <input type="password"> behind dot visuals.
+    // Use .first() to avoid strict-mode violation if the browser injects extra
+    // password-manager inputs into the page.
+    this.pinInput = page.locator('input[type="password"]').first();
     this.submitButton = page.getByRole('button', { name: 'Sign In' });
     this.demoButton = page.getByRole('button', { name: 'Try Demo Account' });
     this.errorMessage = page.getByRole('alert').or(page.locator('[data-testid="error"]'));

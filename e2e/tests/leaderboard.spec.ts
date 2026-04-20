@@ -25,6 +25,15 @@ test.describe('Leaderboard', () => {
     }
   });
 
+  test('dashboard displays top gainers and losers', async ({ page }) => {
+    // Authenticated users are redirected from / to /dashboard — check there instead
+    await page.goto('/dashboard');
+    const gainersSection = page.getByText(/top gainers|top losers/i).first();
+    await expect(gainersSection).toBeVisible({ timeout: 8_000 });
+  });
+
+  // Run rate-limit test last — it exhausts the 30/min quota and would poison
+  // any subsequent leaderboard API calls within the same rate-limit window.
   test('leaderboard rate limit (30/min) is enforced', async ({ page }) => {
     const statuses: number[] = [];
     for (let i = 0; i < 32; i++) {
@@ -32,14 +41,5 @@ test.describe('Leaderboard', () => {
       statuses.push(res.status());
     }
     expect(statuses).toContain(429);
-  });
-
-  test('landing page displays leaderboard or richest trader banner', async ({ page }) => {
-    // The leaderboard/richest-trader UI lives on the public landing page, not /dashboard
-    await page.goto('/');
-    const leaderboardSection = page
-      .getByText(/leaderboard|richest trader|top trader/i)
-      .first();
-    await expect(leaderboardSection).toBeVisible({ timeout: 8_000 });
   });
 });

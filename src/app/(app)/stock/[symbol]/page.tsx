@@ -26,7 +26,7 @@ export default function StockPage() {
   const prevPrice = useRef<number | null>(null)
   const [priceFlash, setPriceFlash] = useState('')
 
-  const { data: stockData } = useSWR<{ stock: Stock }>(
+  const { data: stockData, isLoading: stockLoading } = useSWR<{ stock: Stock; error?: string }>(
     `/api/stocks/${symbol}`, fetcher, { refreshInterval: 4000 }
   )
   const { data: historyData, isLoading: histLoading } = useSWR<{ history: PricePoint[] }>(
@@ -97,7 +97,12 @@ export default function StockPage() {
         <ArrowLeft className="w-4 h-4" /> Back to Markets
       </Link>
 
-      {!stock ? (
+      {!stock && stockData?.error ? (
+        <div className="text-center py-20">
+          <p className="text-gray-400 text-lg">Stock not found</p>
+          <p className="text-gray-500 text-sm mt-2">The symbol <span className="font-mono">{symbol}</span> does not exist or is invalid.</p>
+        </div>
+      ) : !stock ? (
         <StockSkeleton />
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

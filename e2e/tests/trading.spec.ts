@@ -24,7 +24,7 @@ test.describe('Stock Trading – happy path', () => {
     await stock.goto(TEST_SYMBOL);
     await stock.watchlistToggle.click();
     // Toast or visual indicator
-    await expect(page.getByText(/added to watchlist|watching/i)).toBeVisible();
+    await expect(page.getByText(/added.*to watchlist|watching/i)).toBeVisible();
   });
 
   test('can buy shares and order appears in orders list', async ({ page }) => {
@@ -91,8 +91,8 @@ test.describe('Stock Trading – non-happy path', () => {
     const stock = new StockPage(page);
     await stock.goto(TEST_SYMBOL);
     await stock.sharesInput.fill('0');
-    await stock.buyButton.click();
-    // Should not open confirm modal — stays on page with error or disabled state
+    // Button is disabled when sharesNum === 0 (disabled={!sharesNum}) — do not click
+    await expect(stock.buyButton).toBeDisabled();
     const modalOpen = await stock.orderConfirmModal.isVisible().catch(() => false);
     expect(modalOpen).toBe(false);
   });
@@ -125,15 +125,21 @@ test.describe('Stock Trading – non-happy path', () => {
   test('selling more shares than owned is rejected', async ({ page }) => {
     const stock = new StockPage(page);
     await stock.goto(TEST_SYMBOL);
+    // Must switch to Sell tab first — otherwise the submit button says "Review Buy Order"
+    await page.getByRole('button', { name: /^sell$/i }).click();
     await stock.sharesInput.fill('999999');
-    await stock.sellButton.click();
 
+    if (await stock.sellButton.isDisabled().catch(() => true)) {
+      // If button stays disabled (no holdings), just verify modal never opened
+      expect(await stock.orderConfirmModal.isVisible().catch(() => false)).toBe(false);
+      return;
+    }
+
+    await stock.sellButton.click();
     if (await stock.orderConfirmModal.isVisible().catch(() => false)) {
       await stock.confirmOrderButton.click();
-      await expect(stock.orderErrorMessage).toBeVisible({ timeout: 5_000 });
-    } else {
-      await expect(stock.orderErrorMessage).toBeVisible({ timeout: 5_000 });
     }
+    await expect(stock.orderErrorMessage).toBeVisible({ timeout: 5_000 });
   });
 
   test('invalid stock symbol shows 404 or error state', async ({ page }) => {

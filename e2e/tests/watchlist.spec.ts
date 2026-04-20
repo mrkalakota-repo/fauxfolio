@@ -31,7 +31,7 @@ test.describe('Watchlist – happy path', () => {
     // Wait for stock data to load before toggle is rendered
     await stock.watchlistToggle.waitFor({ state: 'visible', timeout: 8_000 });
     await stock.watchlistToggle.click();
-    await expect(page.getByText(/added to watchlist|watching/i)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/added.*to watchlist|watching/i)).toBeVisible({ timeout: 5_000 });
 
     const wl = new WatchlistPage(page);
     await wl.goto();
@@ -61,7 +61,7 @@ test.describe('Watchlist – happy path', () => {
     await stock.watchlistToggle.waitFor({ state: 'visible', timeout: 8_000 });
     await stock.watchlistToggle.click();
     // Wait for the success toast so we know the add was processed
-    await page.getByText(/added to watchlist/i).waitFor({ timeout: 5_000 }).catch(() => null);
+    await page.getByText(/added.*to watchlist/i).waitFor({ timeout: 5_000 }).catch(() => null);
 
     await page.reload();
 
