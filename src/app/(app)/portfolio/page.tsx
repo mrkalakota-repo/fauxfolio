@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
+import toast from 'react-hot-toast'
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
@@ -38,9 +40,29 @@ export default function PortfolioPage() {
   const { data, isLoading } = useSWR<Portfolio>('/api/portfolio', fetcher, {
     refreshInterval: 8000,
   })
-  const { data: optionsData } = useSWR<{ positions: OptionPositionRow[] }>(
+  const { data: optionsData, mutate: mutateOptions } = useSWR<{ positions: OptionPositionRow[] }>(
     '/api/options/positions', fetcher, { refreshInterval: 8000 }
   )
+  const [closingId, setClosingId] = useState<string | null>(null)
+
+  async function handleClose(positionId: string, contracts: number) {
+    setClosingId(positionId)
+    try {
+      const res = await fetch('/api/options/trade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contractId: positionId, action: 'CLOSE', contracts }),
+      })
+      const d = await res.json()
+      if (!res.ok) { toast.error(d.error || 'Failed to close position'); return }
+      toast.success(d.message || 'Position closed')
+      mutateOptions()
+    } catch {
+      toast.error('Network error')
+    } finally {
+      setClosingId(null)
+    }
+  }
 
   const portfolio = data
 
@@ -246,6 +268,7 @@ export default function PortfolioPage() {
                   <th className="text-right px-5 py-3">Mark</th>
                   <th className="text-right px-5 py-3">P&L</th>
                   <th className="text-right px-5 py-3">Status</th>
+                  <th className="px-5 py-3"></th>
                 </tr>
               </thead>
               <tbody>
@@ -285,6 +308,17 @@ export default function PortfolioPage() {
                       )}>
                         {p.status}
                       </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      {p.status === 'OPEN' && (
+                        <button
+                          onClick={() => handleClose(p.id, p.contracts)}
+                          disabled={closingId === p.id}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors disabled:opacity-50"
+                        >
+                          {closingId === p.id ? 'Closing…' : `Sell · ${formatCurrency(p.markValue)}`}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
