@@ -21,6 +21,9 @@ export default function DashboardPage() {
   const { data: stocksData } = useSWR<{ stocks: Stock[]; marketOpen: boolean }>(
     '/api/stocks', fetcher, { refreshInterval: 8000 }
   )
+  const { data: moversData } = useSWR<{ gainers: Stock[]; losers: Stock[]; marketOpen: boolean }>(
+    '/api/stocks/movers', fetcher, { refreshInterval: 60000 }
+  )
   const { data: badgesData } = useSWR('/api/users/badges', fetcher)
 
   // Handle Stripe redirect result
@@ -31,20 +34,11 @@ export default function DashboardPage() {
   }, [searchParams])
 
   const portfolio = portfolioData
-  const stocks = stocksData?.stocks || []
-  const marketOpen = stocksData?.marketOpen ?? false
+  const marketOpen = stocksData?.marketOpen ?? moversData?.marketOpen ?? false
   const earnedBadges = (badgesData?.badges ?? []).filter((b: { earned: boolean }) => b.earned)
 
-  const topMovers = stocks
-    .map(s => ({
-      symbol: s.symbol, name: s.name, currentPrice: s.currentPrice,
-      change: s.currentPrice - s.previousClose,
-      changePercent: ((s.currentPrice - s.previousClose) / s.previousClose) * 100,
-    }))
-    .sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent))
-
-  const gainers = topMovers.filter(m => m.changePercent > 0).slice(0, 5)
-  const losers  = topMovers.filter(m => m.changePercent < 0).slice(0, 5)
+  const gainers = moversData?.gainers ?? []
+  const losers  = moversData?.losers  ?? []
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 animate-fade-in">
@@ -77,7 +71,7 @@ export default function DashboardPage() {
               marketOpen ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
             )}>
               <Circle className={cn('w-1.5 h-1.5 fill-current', marketOpen ? 'text-green-400' : 'text-gray-500')} />
-              {marketOpen ? 'Market Open — Live Prices' : 'Market Closed — Simulated Prices'}
+              {marketOpen ? 'Market Open — Live Prices' : 'Market Closed — Last Close Prices'}
             </span>
           </div>
         </div>
@@ -167,21 +161,31 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Top movers */}
+      {/* Top movers — real-time Finnhub data during market hours */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card p-5">
-          <h2 className="font-semibold mb-4 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-green-400" /> Top Gainers
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-green-400" /> Top Gainers
+            </h2>
+            {!marketOpen && (
+              <span className="text-xs text-gray-500">prev close</span>
+            )}
+          </div>
           <div className="space-y-1">
             {gainers.map(s => <StockRow key={s.symbol} stock={s} />)}
             {gainers.length === 0 && <p className="text-gray-500 text-sm text-center py-4">No gainers yet</p>}
           </div>
         </div>
         <div className="card p-5">
-          <h2 className="font-semibold mb-4 flex items-center gap-2">
-            <TrendingDown className="w-4 h-4 text-red-400" /> Top Losers
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold flex items-center gap-2">
+              <TrendingDown className="w-4 h-4 text-red-400" /> Top Losers
+            </h2>
+            {!marketOpen && (
+              <span className="text-xs text-gray-500">prev close</span>
+            )}
+          </div>
           <div className="space-y-1">
             {losers.map(s => <StockRow key={s.symbol} stock={s} />)}
             {losers.length === 0 && <p className="text-gray-500 text-sm text-center py-4">No losers yet</p>}
