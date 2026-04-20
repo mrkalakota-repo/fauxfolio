@@ -37,8 +37,10 @@ export function simulatePriceTick(
 
   const newPrice = currentPrice * (1 + totalReturn)
 
-  // Prevent prices from going below 10% of base
-  return Math.max(newPrice, basePrice * 0.1)
+  // Cap intraday move to ±10% from previous close to prevent simulation drift
+  const lowerBound = basePrice * 0.90
+  const upperBound = basePrice * 1.10
+  return Math.min(upperBound, Math.max(lowerBound, newPrice))
 }
 
 export function simulateBatchPriceTick(

@@ -65,13 +65,14 @@ export async function POST(req: NextRequest) {
           update: { vix: vixValue },
         })
       }
-    } else {
-      // Simulate prices when market closed or no API key
+    } else if (isMarketOpen()) {
+      // Market open but no Finnhub key — use GBM simulation as fallback (dev/offline)
       const simPrices = simulateBatchPriceTick(
         stocks.map(s => ({ symbol: s.symbol, currentPrice: s.currentPrice, previousClose: s.previousClose, sector: s.sector }))
       )
       Object.assign(newPrices, simPrices)
     }
+    // Market closed: newPrices stays empty — no price updates, leaderboard stays at last real close
 
     // Persist updated prices + record history
     await prisma.$transaction(async tx => {
