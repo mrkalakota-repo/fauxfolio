@@ -17,6 +17,11 @@ npm run db:seed-profiles  # Seed 100 fake traders for leaderboard demo (must use
 npm run db:studio         # Open Prisma Studio
 npm run db:generate       # Regenerate Prisma client after schema changes
 
+# E2E tests (requires PostgreSQL DATABASE_URL and JWT_SECRET in .env.local)
+npx playwright test --config e2e/playwright.config.ts                          # run all tests
+npx playwright test --config e2e/playwright.config.ts e2e/tests/trading.spec.ts  # run one file
+npx playwright test --config e2e/playwright.config.ts --headed                # with browser UI
+
 # Mobile (must be in ~/Developer/StockTrader-Simulator — see Mobile section)
 npx cap sync              # Sync web assets and plugins to ios/ and android/
 npx cap open ios          # Open Xcode
@@ -118,10 +123,20 @@ Client components use SWR with a `fetch` fetcher. After order placement, call `m
 
 Formula: `totalReturnPct = (cashBalance + holdingsValue - invested) / invested * 100`. `invested = 10000 + totalTopUps * 10000`. Names masked: "Alex Johnson" → "Alex J."
 
+### Portfolio Snapshots
+`PortfolioSnapshot` records drive the "Portfolio Performance" chart. They are written in three places:
+1. On registration (initial $10,000 baseline)
+2. After each market order fills (inside the order transaction)
+3. Once per calendar day per active user — the tick route creates a snapshot on the first POST of each day if none exists yet
+
+The portfolio API deduplicates to one point per calendar day (latest snapshot wins) and always appends the live computed value as the final chart point, ensuring the chart's rightmost value matches the "Portfolio Value" stat card.
+
 ### Options Trading
 Paper options priced via Black-Scholes in `src/lib/simulation.ts`. Key exports: `blackScholes(S,K,T,r,sigma,type)`, `generateOptionChain(symbol, currentPrice, sector)`, `deriveImpliedVolatility(sector)`.
 
 Chain: 9 strikes (×0.80–1.20 from spot) × 7 expiries (4 weekly Fridays + 3 monthly last-Fridays) × CALL+PUT = up to 126 contracts per symbol. Contracts are upserted lazily in `/api/options/[symbol]` when fewer than 10 non-expired remain.
+
+Options API routes: `/api/options/[symbol]` (chain), `/api/options/[symbol]/positions` (user positions), `/api/options/[symbol]/trade` (open/close).
 
 Options expiration runs inside the existing `$transaction` in `/api/simulation/tick` — ITM positions settle at intrinsic value, cash credited, status → `EXPIRED`.
 
@@ -132,7 +147,16 @@ Private 30-day competitions. Models: `League`, `LeagueMember`, `LeagueInvite`.
 
 Lazy finalization: on any GET to `/api/leagues/[id]` after `endsAt < now`, the route sets `status = 'ENDED'`, computes final ranks, and writes `LeagueMember.finalPortfolio` + `rank` — no background job needed.
 
-Invites are by phone number (existing users only). Token-based join link: `/leagues/[id]/join?token=X`. The join page is a client component that auto-POSTs on mount (server components can't forward cookies to their own API).
+Invites are by phone number (existing users only). Token-based join link: `/leagues/[id]/join?token=X`. The join page (`src/app/(app)/leagues/[id]/join/page.tsx`) is a client component that fetches invite details via GET on mount, then shows explicit Accept/Decline buttons — the user must click to join.
+
+The league leaderboard (`/api/leagues/[id]/leaderboard`) fetches all members and their holdings in a single JOIN query. The league detail SWR and leaderboard SWR both refresh every 15 seconds.
+
+### E2E Tests
+Playwright tests live in `e2e/` with a page-object model (`e2e/pages/`). Tests use a shared authenticated session stored in `e2e/.auth/user.json` (created by `auth.setup.ts`). Files matching `*.unauth.spec.ts` run without authentication.
+
+`e2e/global-setup.ts` runs before any test and validates that `DATABASE_URL` is a PostgreSQL URL and `JWT_SECRET` is set — it exits with a clear error if not. SQLite will not work for E2E.
+
+To run against a different database without editing files: `DATABASE_URL="postgresql://..." npx playwright test --config e2e/playwright.config.ts`
 
 ### Premium Feature Gate
 Both Options Trading and Leagues require `user.totalTopUps >= 1` (any cash pack purchase). Gate pattern used in all gated API routes:
