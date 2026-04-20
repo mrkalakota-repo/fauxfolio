@@ -7,6 +7,14 @@ import { StockPage } from '../pages/stock.page';
 
 const TEST_SYMBOL = 'MSFT';
 
+// Minimal stock shape the watchlist page expects inside each watchlist item
+const stubStock = {
+  name: 'Microsoft Corp',
+  currentPrice: 420,
+  previousClose: 415,
+  sector: 'Technology',
+};
+
 test.describe('Watchlist – happy path', () => {
   test('watchlist page loads', async ({ page }) => {
     const wl = new WatchlistPage(page);
@@ -15,10 +23,15 @@ test.describe('Watchlist – happy path', () => {
   });
 
   test('adding a stock from the stock page appears in watchlist', async ({ page }) => {
+    // Ensure clean state — remove TEST_SYMBOL if already watchlisted
+    await page.request.delete(`/api/watchlist/${TEST_SYMBOL}`).catch(() => null);
+
     const stock = new StockPage(page);
     await stock.goto(TEST_SYMBOL);
+    // Wait for stock data to load before toggle is rendered
+    await stock.watchlistToggle.waitFor({ state: 'visible', timeout: 8_000 });
     await stock.watchlistToggle.click();
-    await expect(page.getByText(/added to watchlist|watching/i)).toBeVisible();
+    await expect(page.getByText(/added to watchlist|watching/i)).toBeVisible({ timeout: 5_000 });
 
     const wl = new WatchlistPage(page);
     await wl.goto();
@@ -40,9 +53,15 @@ test.describe('Watchlist – happy path', () => {
   });
 
   test('watchlist persists after page reload', async ({ page }) => {
+    // Ensure clean state — remove TEST_SYMBOL if already watchlisted
+    await page.request.delete(`/api/watchlist/${TEST_SYMBOL}`).catch(() => null);
+
     const stock = new StockPage(page);
     await stock.goto(TEST_SYMBOL);
+    await stock.watchlistToggle.waitFor({ state: 'visible', timeout: 8_000 });
     await stock.watchlistToggle.click();
+    // Wait for the success toast so we know the add was processed
+    await page.getByText(/added to watchlist/i).waitFor({ timeout: 5_000 }).catch(() => null);
 
     await page.reload();
 
@@ -54,9 +73,13 @@ test.describe('Watchlist – happy path', () => {
 
 test.describe('Watchlist – non-happy path', () => {
   test('empty watchlist shows empty state message', async ({ page }) => {
-    // Intercept the watchlist API to return an empty list
+    // API returns { watchlist: [] }
     await page.route('**/api/watchlist', (route) => {
-      route.fulfill({ json: [] });
+      if (route.request().method() === 'GET') {
+        route.fulfill({ json: { watchlist: [] } });
+      } else {
+        route.continue();
+      }
     });
 
     const wl = new WatchlistPage(page);
@@ -67,6 +90,7 @@ test.describe('Watchlist – non-happy path', () => {
   test('adding the same stock twice does not duplicate it', async ({ page }) => {
     const stock = new StockPage(page);
     await stock.goto(TEST_SYMBOL);
+    await stock.watchlistToggle.waitFor({ state: 'visible', timeout: 8_000 });
 
     // First add
     await stock.watchlistToggle.click();
@@ -86,15 +110,19 @@ test.describe('Watchlist – non-happy path', () => {
   });
 
   test('removing the only watchlist item shows empty state', async ({ page }) => {
-    // Stub watchlist with exactly one item then stub delete
+    // Stub watchlist with exactly one item — match real API shape: { watchlist: [...] }
     await page.route('**/api/watchlist', async (route) => {
       if (route.request().method() === 'GET') {
-        route.fulfill({ json: [{ symbol: 'TSLA', name: 'Tesla', currentPrice: 250 }] });
+        route.fulfill({
+          json: {
+            watchlist: [{ stockSymbol: 'TSLA', stock: stubStock }],
+          },
+        });
       } else {
         route.continue();
       }
     });
-    await page.route(`**/api/watchlist/TSLA`, (route) => {
+    await page.route('**/api/watchlist/TSLA', (route) => {
       route.fulfill({ status: 200, json: { ok: true } });
     });
 
@@ -102,9 +130,13 @@ test.describe('Watchlist – non-happy path', () => {
     await wl.goto();
     await wl.removeFirst();
 
-    // After removal, intercept returns empty
+    // After removal stub returns empty list
     await page.route('**/api/watchlist', (route) => {
-      route.fulfill({ json: [] });
+      if (route.request().method() === 'GET') {
+        route.fulfill({ json: { watchlist: [] } });
+      } else {
+        route.continue();
+      }
     });
 
     await wl.goto();

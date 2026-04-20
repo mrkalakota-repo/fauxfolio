@@ -7,9 +7,7 @@ export class WatchlistPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.watchlistItems = page.locator('[data-testid="watchlist-item"]').or(
-      page.locator('[data-testid="stock-row"]')
-    );
+    this.watchlistItems = page.locator('[data-testid="watchlist-item"]');
     this.emptyState = page.getByText(/watchlist is empty|no stocks|add stocks/i);
   }
 
@@ -26,10 +24,10 @@ export class WatchlistPage {
   }
 
   async removeFirst() {
-    const removeBtn = this.page
-      .locator('[data-testid="watchlist-item"]')
+    // Remove button has aria-label="Remove" (added to watchlist page component)
+    const removeBtn = this.watchlistItems
       .first()
-      .getByRole('button', { name: /remove|delete/i });
+      .getByRole('button', { name: /remove/i });
     await removeBtn.click();
   }
 }

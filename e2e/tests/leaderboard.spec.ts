@@ -34,8 +34,9 @@ test.describe('Leaderboard', () => {
     expect(statuses).toContain(429);
   });
 
-  test('dashboard displays leaderboard or richest trader banner', async ({ page }) => {
-    await page.goto('/dashboard');
+  test('landing page displays leaderboard or richest trader banner', async ({ page }) => {
+    // The leaderboard/richest-trader UI lives on the public landing page, not /dashboard
+    await page.goto('/');
     const leaderboardSection = page
       .getByText(/leaderboard|richest trader|top trader/i)
       .first();

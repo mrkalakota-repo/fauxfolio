@@ -21,8 +21,8 @@ export class StockPage {
       page.getByText(/\$[\d,]+\.\d{2}/).first()
     );
     this.sharesInput = page.getByLabel(/shares|quantity/i);
-    this.buyButton = page.getByRole('button', { name: /review buy|^buy/i });
-    this.sellButton = page.getByRole('button', { name: /review sell|^sell/i });
+    this.buyButton = page.getByRole('button', { name: /review buy order/i });
+    this.sellButton = page.getByRole('button', { name: /review sell order/i });
     this.orderConfirmModal = page.getByRole('dialog');
     this.confirmOrderButton = page.getByRole('button', { name: /confirm|place order/i });
     this.cancelOrderButton = page.getByRole('button', { name: /cancel/i });

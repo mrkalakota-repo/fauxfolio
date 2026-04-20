@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSWRConfig } from 'swr'
 import toast from 'react-hot-toast'
 import { Wallet, TrendingUp, Loader2, X, Zap, Check } from 'lucide-react'
@@ -18,6 +18,14 @@ export default function GetMoreCashModal({ open, onClose, currentBalance }: Prop
   const { mutate } = useSWRConfig()
   const [loading, setLoading] = useState(false)
   const [selectedId, setSelectedId] = useState<string>('booster')
+
+  // Close on Escape key
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [open, onClose])
 
   if (!open) return null
 

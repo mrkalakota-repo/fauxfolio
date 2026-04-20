@@ -131,8 +131,9 @@ export default function LeaguesPage() {
             </div>
             <form onSubmit={createLeague} className="space-y-4">
               <div>
-                <label className="text-sm text-gray-400 mb-2 block">League Name</label>
+                <label htmlFor="league-name" className="text-sm text-gray-400 mb-2 block">League Name</label>
                 <input
+                  id="league-name"
                   value={leagueName}
                   onChange={e => setLeagueName(e.target.value)}
                   placeholder="e.g. Friends & Family Cup"

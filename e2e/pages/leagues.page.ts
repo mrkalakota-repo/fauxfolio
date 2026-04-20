@@ -14,13 +14,15 @@ export class LeaguesPage {
   constructor(page: Page) {
     this.page = page;
     this.createButton = page.getByRole('button', { name: /create league/i });
-    this.leagueCards = page.locator('[data-testid="league-card"]').or(
-      page.getByRole('article')
-    );
+    this.leagueCards = page.locator('[data-testid="league-card"]');
     this.upgradePrompt = page.getByText(/upgrade|premium|purchase/i);
     this.createModal = page.getByRole('dialog').filter({ hasText: /create league/i });
-    this.leagueNameInput = page.getByLabel(/league name|name/i);
-    this.submitCreateButton = page.getByRole('button', { name: /create|submit/i });
+    // Use placeholder to find the input since the label lacks htmlFor association
+    this.leagueNameInput = this.createModal
+      .getByPlaceholder(/e\.g\.|Friends/i)
+      .or(this.createModal.getByLabel(/league name|name/i));
+    // Scope submit button inside the modal to avoid matching the "Create League" header button
+    this.submitCreateButton = this.createModal.getByRole('button', { name: /create league/i });
     this.inviteInput = page.getByLabel(/phone|invite/i);
     this.inviteButton = page.getByRole('button', { name: /invite|send invite/i });
   }

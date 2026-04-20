@@ -9,10 +9,9 @@ export class MarketsPage {
   constructor(page: Page) {
     this.page = page;
     this.searchInput = page.getByPlaceholder(/AAPL, Tesla/i);
-    this.stockRows = page.locator('[data-testid="stock-row"]').or(page.locator('tbody tr'));
-    this.searchResults = page.locator('[data-testid="search-results"]').or(
-      page.locator('[role="listbox"]')
-    );
+    this.stockRows = page.locator('tbody tr');
+    // Search results render into the same table — any visible row in tbody
+    this.searchResults = page.locator('tbody tr').first();
   }
 
   async goto() {
@@ -25,7 +24,7 @@ export class MarketsPage {
   }
 
   async clickFirstResult() {
-    await this.searchResults.locator('li, [role="option"]').first().click();
+    await this.stockRows.first().locator('a').first().click();
   }
 
   async clickStock(symbol: string) {

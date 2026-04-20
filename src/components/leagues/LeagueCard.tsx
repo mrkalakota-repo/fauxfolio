@@ -18,7 +18,7 @@ interface LeagueCardProps {
 export default function LeagueCard({ id, name, status, endsAt, memberCount, maxMembers, creatorName }: LeagueCardProps) {
   const ended = status === 'ENDED'
   return (
-    <Link href={`/leagues/${id}`} className="card p-4 hover:border-green-500/30 transition-colors block">
+    <Link href={`/leagues/${id}`} data-testid="league-card" className="card p-4 hover:border-green-500/30 transition-colors block">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2.5">
           <div className={cn(

@@ -28,11 +28,14 @@ export class PaymentPage {
 
   /** In dev mode (no STRIPE_SECRET_KEY) this credits cash directly. */
   async purchasePack(packId: PackId) {
-    const packCard = this.modal.locator(`[data-pack-id="${packId}"]`).or(
-      this.modal.getByText(PACKS[packId].virtualCash).locator('..')
-    );
-    const buyBtn = packCard.getByRole('button', { name: /buy|get|purchase/i });
-    await buyBtn.click();
+    // Select the pack card by clicking the button that shows its virtual cash amount
+    const packCard = this.modal
+      .getByRole('button')
+      .filter({ hasText: PACKS[packId].virtualCash });
+    await packCard.click();
+    // Then click the single checkout button (text changes to reflect selected pack)
+    const checkoutBtn = this.modal.getByRole('button', { name: /get .+ for/i });
+    await checkoutBtn.click();
   }
 
   async getSuccessText(): Promise<string> {

@@ -186,7 +186,7 @@ export default function AppShell({
               </span>
             </div>
           </div>
-          <div className={cn('text-base font-bold', isLowBalance ? 'text-red-400' : 'text-white')}>
+          <div data-testid="sidebar-cash-balance" className={cn('text-base font-bold', isLowBalance ? 'text-red-400' : 'text-white')}>
             {formatCurrency(cashBalance)}
           </div>
           <button

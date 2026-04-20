@@ -31,9 +31,9 @@ export class OptionsPage {
 
   async gotoForStock(symbol: string) {
     await this.page.goto(`/stock/${symbol}`);
-    const optionsTab = this.page.getByRole('tab', { name: /options/i }).or(
-      this.page.getByRole('button', { name: /options/i })
-    );
+    // Wait for the stock page to render its tab strip (requires stock data to load)
+    const optionsTab = this.page.getByRole('button', { name: /^options$/i });
+    await optionsTab.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => null);
     if (await optionsTab.isVisible()) await optionsTab.click();
   }
 

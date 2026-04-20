@@ -159,7 +159,7 @@ export default function WatchlistPage() {
             const change = item.stock.currentPrice - item.stock.previousClose
             const changePercent = (change / item.stock.previousClose) * 100
             return (
-              <div key={item.stockSymbol} className="card p-4 flex items-center gap-4 hover:border-gray-600 transition-colors">
+              <div key={item.stockSymbol} data-testid="watchlist-item" className="card p-4 flex items-center gap-4 hover:border-gray-600 transition-colors">
                 <Link
                   href={`/stock/${item.stockSymbol}`}
                   className="flex items-center gap-4 flex-1 min-w-0"
@@ -189,6 +189,7 @@ export default function WatchlistPage() {
                   </div>
                   <button
                     onClick={() => removeFromWatchlist(item.stockSymbol)}
+                    aria-label="Remove"
                     className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
                   >
                     <X className="w-4 h-4" />

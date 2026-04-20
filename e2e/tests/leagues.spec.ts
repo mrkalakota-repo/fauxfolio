@@ -173,19 +173,33 @@ test.describe('Leagues – non-happy path', () => {
   });
 
   test('viewing ended league shows final standings', async ({ page }) => {
+    // The league detail page reads leagueData?.league — wrap response accordingly
     await page.route('**/api/leagues/ended-league', (route) => {
-      route.fulfill({
-        json: {
-          id: 'ended-league',
-          name: 'Past League',
-          status: 'ENDED',
-          members: [{ rank: 1, name: 'Alex J.', growthPct: 12.5 }],
-        },
-      });
+      if (route.request().method() === 'GET') {
+        route.fulfill({
+          json: {
+            league: {
+              id: 'ended-league',
+              name: 'Past League',
+              status: 'ENDED',
+              endsAt: new Date(Date.now() - 86400_000).toISOString(),
+              memberCount: 1,
+              maxMembers: 10,
+              creatorId: 'u1',
+              members: [{ userId: 'u1', name: 'Alex J.', rank: 1, growthPct: 12.5, isCurrentUser: false, startingPortfolio: 10000, currentValue: 11250 }],
+            },
+          },
+        });
+      } else {
+        route.continue();
+      }
+    });
+    await page.route('**/api/leagues/ended-league/leaderboard', (route) => {
+      route.fulfill({ json: { leaderboard: [] } });
     });
 
     await page.goto('/leagues/ended-league');
-    // Should show ended state or results
-    await expect(page.getByText(/ended|final|results/i)).toBeVisible({ timeout: 5_000 });
+    // Component shows "Ended" badge when league.status === 'ENDED'
+    await expect(page.getByText(/ended/i)).toBeVisible({ timeout: 5_000 });
   });
 });

@@ -41,7 +41,8 @@ test.describe('Auth – happy path', () => {
     await expect(page).toHaveURL(/dashboard/);
 
     await page.getByRole('button', { name: /logout|sign out/i }).click();
-    await expect(page).toHaveURL(/login|\//);
+    // Wait specifically for the login page — /login|\// would match any URL immediately
+    await expect(page).toHaveURL(/\/login/, { timeout: 8_000 });
     const cookies = await page.context().cookies();
     expect(cookies.some((c) => c.name === 'fauxfolio_token')).toBe(false);
   });
@@ -83,17 +84,21 @@ test.describe('Auth – login edge cases', () => {
     const login = new LoginPage(page);
     await login.goto();
 
-    for (let i = 0; i < 5; i++) {
+    // Make 6 attempts — the rate limit window is 5/15 min, so at least the last
+    // attempt must trigger a 429 regardless of prior counter state in this run.
+    for (let i = 0; i < 6; i++) {
       await login.phoneInput.fill(DEMO_USER.phone);
       await login.pinInput.fill('111111', { force: true });
       await login.submitButton.click();
-      await page.waitForTimeout(300);
+      // After the rate limit kicks in the alert stays visible; stop looping
+      const rateLimitVisible = await page
+        .getByText(/rate limit|too many|try again/i)
+        .isVisible()
+        .catch(() => false);
+      if (rateLimitVisible) break;
+      await page.waitForTimeout(200);
     }
 
-    // 6th attempt should be rate limited
-    await login.phoneInput.fill(DEMO_USER.phone);
-    await login.pinInput.fill('111111', { force: true });
-    await login.submitButton.click();
     await expect(
       page.getByText(/rate limit|too many|try again/i).or(page.getByRole('alert'))
     ).toBeVisible({ timeout: 8_000 });
