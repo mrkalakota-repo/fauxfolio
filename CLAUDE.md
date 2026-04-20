@@ -58,6 +58,8 @@ JWT stored in an httpOnly cookie named `fauxfolio_token` (7-day expiry). Auth us
 ### Routing Convention
 Next.js 16 renamed `middleware.ts` → `proxy.ts`. Only `src/proxy.ts` should exist — having both causes a build error. The proxy enforces HTTPS redirect in production.
 
+`src/app/robots.ts` and `src/app/sitemap.ts` are Next.js route handlers that generate `/robots.txt` and `/sitemap.xml`. Both read `NEXT_PUBLIC_APP_URL` for the canonical domain. Authenticated routes (`/dashboard`, `/portfolio`, etc.) are disallowed in robots. Login/register pages have `noindex` set via layout files (`src/app/login/layout.tsx`, `src/app/register/layout.tsx`) since those pages are `'use client'` and cannot export `metadata` directly.
+
 ### Rate Limiting
 `src/lib/rateLimit.ts` — in-memory Map-based limiter (no Redis). Works correctly for single-process deployments. `RATE_LIMITS` constants:
 
@@ -172,8 +174,24 @@ Frontend detects `upgradeRequired: true` on a 403 to open `GetMoreCashModal`.
 - **Input validation**: stock symbol must match `/^[A-Za-z]{1,5}$/`; share quantities 1–1,000,000. Validate at the top of each route before any DB access.
 - **Rate limiting key**: IP extracted from `x-forwarded-for` (first segment) for auth/register/leaderboard; `userId:ip` for tick. Cleanup runs on a 5-minute interval.
 
+### After-Hours Order Queuing
+Market orders placed outside market hours are stored with `status: 'PENDING'` instead of executing immediately. For BUY orders, cash is debited at placement (reserved). The tick route fills all `PENDING MARKET` orders on the first tick after market open, using the stock's current price at fill time. LIMIT orders also queue as `PENDING` and are evaluated each tick.
+
+### Badges
+`src/lib/badges.ts` — portfolio value milestones award a `UserBadge` record. Thresholds: $100K, $1M, $10M, $100M, $1B. `checkAndAwardBadges(tx, userId, portfolioValue)` is called inside the tick `$transaction` after snapshot creation — pass the Prisma transaction client, not `prisma` directly. Returns an array of newly awarded badge names (empty if none new).
+
+### Tournaments
+Monthly competitions running the full calendar month. One `Tournament` per `(month, year)` pair — created lazily via `getOrCreateCurrentTournament()` in `src/lib/tournament.ts`.
+
+- **Registration**: open until the 5th of each month (midnight EST on the 6th). `isRegistrationOpen()` checks this. Entry requires a $1 Stripe payment (dev mode: credited directly). Each `TournamentEntry` gets a fresh `$20,000` starting balance in an **isolated** portfolio (`TournamentHolding` model, separate from the user's main holdings).
+- **Isolated portfolio**: tournament orders go to `/api/tournaments/[id]/orders` and use `TournamentHolding` + `TournamentEntry.cashBalance`, never touching the user's main `cashBalance` or `Holding` records.
+- **Lazy finalization**: on any GET to `/api/tournaments/[id]` (or `/api/tournaments`) after `endsAt < now`, `finalizeTournament()` ranks entries by `cashBalance + holdingsValue`, writes `finalBalance`/`rank`/`status=ENDED`, and credits the final balance back to each entrant's main `cashBalance`.
+- **Winner certificate**: PDF generated server-side at `/api/tournaments/[id]/certificate?userId=X` via `@react-pdf/renderer`.
+- **Leaderboard formula**: `returnPct = (finalBalance - 20000) / 20000 * 100`.
+
 ### Security Patterns
 - **Timing-safe login**: if user not found, bcrypt compares against a dummy hash so response time doesn't reveal whether the phone number exists.
+- **Auth cookie**: `sameSite: 'lax'` (not `strict`) — required so the cookie survives cross-site redirects from Stripe back to `/dashboard`. `strict` drops the cookie on any external redirect.
 - **CSP**: headers set in `next.config.js` — allows Finnhub and Turnstile externals, blocks `frame-ancestors`, restricts `unsafe-eval` to scripts only. Auth and payment endpoints set `Cache-Control: no-store`.
 
 ### Market Hours

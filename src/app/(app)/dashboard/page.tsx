@@ -9,7 +9,6 @@ import toast from 'react-hot-toast'
 import { formatCurrency, formatPercent, formatChange, getChangeColor, cn } from '@/lib/utils'
 import PortfolioChart from '@/components/charts/PortfolioChart'
 import StockRow from '@/components/StockRow'
-import BadgeStrip from '@/components/BadgeStrip'
 import type { Portfolio, Stock } from '@/types'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
@@ -34,6 +33,7 @@ export default function DashboardPage() {
   const portfolio = portfolioData
   const stocks = stocksData?.stocks || []
   const marketOpen = stocksData?.marketOpen ?? false
+  const earnedBadges = (badgesData?.badges ?? []).filter((b: { earned: boolean }) => b.earned)
 
   const topMovers = stocks
     .map(s => ({
@@ -51,8 +51,25 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-2xl font-bold flex items-center gap-2 flex-wrap">
             Good {getGreeting()}, {portfolio?.user?.name?.split(' ')[0] ?? '—'}
+            {earnedBadges.map((b: { badge: string; icon: string; label: string; description: string; awardedAt: string | null }) => (
+              <span key={b.badge} className="relative group inline-flex">
+                <span className="cursor-default text-xl leading-none">{b.icon}</span>
+                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
+                  <span className="bg-gray-900 border border-brand-border rounded-lg px-3 py-2 text-xs text-gray-300 whitespace-nowrap shadow-xl">
+                    <span className="block font-medium text-white mb-0.5">{b.label}</span>
+                    <span className="block">{b.description}</span>
+                    {b.awardedAt && (
+                      <span className="block text-green-400 mt-1">
+                        Earned {new Date(b.awardedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    )}
+                  </span>
+                  <span className="w-2 h-2 bg-gray-900 border-r border-b border-brand-border rotate-45 -mt-1" />
+                </span>
+              </span>
+            ))}
           </h1>
           <div className="flex items-center gap-2 mt-1">
             <span className={cn(
@@ -98,12 +115,6 @@ export default function DashboardPage() {
           loading={portLoading}
           valueColor={getChangeColor(portfolio?.totalGainLoss ?? 0)}
         />
-      </div>
-
-      {/* Achievement Badges */}
-      <div className="card p-5">
-        <h2 className="font-semibold mb-3 text-sm text-gray-400 uppercase tracking-wider">Achievements</h2>
-        <BadgeStrip badges={badgesData?.badges ?? []} />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
