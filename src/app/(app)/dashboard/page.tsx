@@ -50,7 +50,8 @@ export default function DashboardPage() {
             {earnedBadges.map((b: { badge: string; icon: string; label: string; description: string; awardedAt: string | null }) => (
               <span key={b.badge} className="relative group inline-flex">
                 <span className="cursor-default text-xl leading-none">{b.icon}</span>
-                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
+                <span className="absolute top-full left-1/2 -translate-x-1/2 mt-2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
+                  <span className="w-2 h-2 bg-gray-900 border-l border-t border-brand-border rotate-45 -mb-1" />
                   <span className="bg-gray-900 border border-brand-border rounded-lg px-3 py-2 text-xs text-gray-300 whitespace-nowrap shadow-xl">
                     <span className="block font-medium text-white mb-0.5">{b.label}</span>
                     <span className="block">{b.description}</span>
@@ -60,7 +61,6 @@ export default function DashboardPage() {
                       </span>
                     )}
                   </span>
-                  <span className="w-2 h-2 bg-gray-900 border-r border-b border-brand-border rotate-45 -mt-1" />
                 </span>
               </span>
             ))}
