@@ -330,21 +330,25 @@ export async function POST(req: NextRequest) {
     const hasSnapshotToday = await prisma.portfolioSnapshot.count({
       where: { userId: session.userId, snapshotAt: { gte: todayStart } },
     }) > 0
+
+    // Always compute portfolio value — needed for badge checks on every tick
+    const [snapUser, snapHoldings] = await Promise.all([
+      prisma.user.findUnique({ where: { id: session.userId }, select: { cashBalance: true } }),
+      prisma.holding.findMany({
+        where: { userId: session.userId },
+        include: { stock: { select: { currentPrice: true } } },
+      }),
+    ])
+    const snapHoldingsValue = snapHoldings.reduce((s, h) => s + h.stock.currentPrice * h.shares, 0)
+    const snapTotalValue = (snapUser?.cashBalance ?? 0) + snapHoldingsValue
+
     if (!hasSnapshotToday) {
-      const [snapUser, snapHoldings] = await Promise.all([
-        prisma.user.findUnique({ where: { id: session.userId }, select: { cashBalance: true } }),
-        prisma.holding.findMany({
-          where: { userId: session.userId },
-          include: { stock: { select: { currentPrice: true } } },
-        }),
-      ])
-      const snapHoldingsValue = snapHoldings.reduce((s, h) => s + h.stock.currentPrice * h.shares, 0)
-      const snapTotalValue = (snapUser?.cashBalance ?? 0) + snapHoldingsValue
       await prisma.portfolioSnapshot.create({
         data: { userId: session.userId, totalValue: snapTotalValue, cashBalance: snapUser?.cashBalance ?? 0 },
       })
-      await checkAndAwardBadges(prisma, session.userId, snapTotalValue)
     }
+
+    await checkAndAwardBadges(prisma, session.userId, snapTotalValue)
 
     return NextResponse.json({
       updated: Object.keys(newPrices).length,

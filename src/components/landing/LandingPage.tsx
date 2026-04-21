@@ -144,6 +144,8 @@ export default function LandingPage() {
   const richest = data?.richest ?? null
   const stats = data?.stats
   const previousWinner = tournamentData?.previousWinner ?? null
+  const currentTournament = tournamentData?.tournament ?? null
+  const registrationOpen = tournamentData?.registrationOpen ?? false
 
   async function handleShareWinner(winner: { name: string; finalBalance: number | null; returnPct: string; certificateUrl: string; month: string }) {
     const certUrl = `${window.location.origin}${winner.certificateUrl}`
@@ -499,6 +501,37 @@ export default function LandingPage() {
                 <Share2 className="w-3.5 h-3.5" /> Share
               </button>
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* Current Tournament Banner */}
+      {currentTournament && currentTournament.status !== 'ENDED' && (
+        <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-12">
+          <div className="relative overflow-hidden rounded-2xl border border-green-500/30 bg-gradient-to-r from-green-500/10 via-emerald-500/5 to-green-500/10 px-6 py-5 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+            <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+              <Trophy className="w-6 h-6 text-green-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold uppercase tracking-widest text-green-500/80 mb-0.5">
+                🏁 {formatMonth(currentTournament.month, currentTournament.year)} Tournament
+              </p>
+              <p className="text-base font-black text-white">
+                {registrationOpen ? 'Registration is open — compete for glory!' : 'Tournament in progress'}
+              </p>
+              <p className="text-sm text-green-200/60 mt-0.5">
+                {registrationOpen
+                  ? `Ends ${new Date(currentTournament.endsAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} · $20,000 starting balance · isolated portfolio`
+                  : `Runs until ${new Date(currentTournament.endsAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
+                }
+              </p>
+            </div>
+            <Link
+              href="/register"
+              className="flex-shrink-0 flex items-center gap-1.5 bg-green-500 hover:bg-green-400 text-black font-bold text-sm px-4 py-2.5 rounded-xl transition-colors"
+            >
+              {registrationOpen ? 'Join Free' : 'Sign Up'} <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </section>
       )}

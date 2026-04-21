@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
   const pack = CASH_PACKS.find(p => p.id === packId)
   if (!pack) return NextResponse.json({ error: 'Invalid pack' }, { status: 400 })
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    ?? `https://${req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'localhost:3000'}`
 
   // Dev mode: no Stripe key — credit cash directly
   if (!hasStripe || !stripe) {
