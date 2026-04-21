@@ -41,8 +41,9 @@ export async function GET() {
     const holdingsValue = enrichedHoldings.reduce((sum, h) => sum + h.currentValue, 0)
     const totalValue = user.cashBalance + holdingsValue
     const totalCost = enrichedHoldings.reduce((sum, h) => sum + h.avgCost * h.shares, 0)
-    const totalGainLoss = holdingsValue - totalCost
-    const totalGainLossPercent = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0
+    const invested = 10000 + user.totalTopUps * 10000
+    const totalGainLoss = totalValue - invested
+    const totalGainLossPercent = (totalGainLoss / invested) * 100
 
     // Day change: compare to yesterday's closing
     const yesterdayValue = enrichedHoldings.reduce((sum, h) => {
@@ -81,6 +82,7 @@ export async function GET() {
       holdings: enrichedHoldings,
       totalValue,
       totalCost,
+      invested,
       totalGainLoss,
       totalGainLossPercent,
       dayChange,
