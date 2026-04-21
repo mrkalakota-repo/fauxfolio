@@ -318,9 +318,10 @@ model UserBadge {
 }
 
 model MarketState {
-  id        Int      @id @default(1)
-  vix       Float    @default(20)
-  updatedAt DateTime @updatedAt
+  id            Int      @id @default(1)
+  vix           Float    @default(20)
+  lastCloseDate String?  // "YYYY-MM-DD" ET date of last previousClose snapshot
+  updatedAt     DateTime @updatedAt
 
   @@map("market_state")
 }
