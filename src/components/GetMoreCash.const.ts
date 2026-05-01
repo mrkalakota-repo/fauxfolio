@@ -15,8 +15,8 @@ export const CASH_PACKS: CashPack[] = [
   {
     id: 'starter',
     label: 'Starter Pack',
-    priceCents: 100,
-    priceDisplay: '$1',
+    priceCents: 99,
+    priceDisplay: '$0.99',
     virtualCash: 10_000,
     topUpUnits: 1,
   },
