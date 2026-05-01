@@ -72,7 +72,11 @@ Next.js 16 renamed `middleware.ts` → `proxy.ts`. Only `src/proxy.ts` should ex
 `src/app/robots.ts` and `src/app/sitemap.ts` are Next.js route handlers that generate `/robots.txt` and `/sitemap.xml`. Both read `NEXT_PUBLIC_APP_URL` for the canonical domain. Authenticated routes (`/dashboard`, `/portfolio`, etc.) are disallowed in robots. Login/register pages have `noindex` set via layout files (`src/app/login/layout.tsx`, `src/app/register/layout.tsx`) since those pages are `'use client'` and cannot export `metadata` directly.
 
 ### Rate Limiting
-`src/lib/rateLimit.ts` — in-memory Map-based limiter (no Redis). Works correctly for single-process deployments. `RATE_LIMITS` constants:
+`src/lib/rateLimit.ts` — two limiters:
+- `checkRateLimit()` — in-memory Map, fast, resets on Lambda cold start. Used for high-frequency endpoints (tick, search, leaderboard).
+- `checkRateLimitDb()` — DB-backed via `RateLimitEntry` table, survives cold starts. Used for auth-critical endpoints (login, register, change-pin). Fails open on DB error.
+
+`RATE_LIMITS` constants:
 
 | Key | Limit | Window |
 |-----|-------|--------|
@@ -115,7 +119,7 @@ Available cash packs are defined in `src/components/GetMoreCash.const.ts`:
 
 | Pack ID | Price | Virtual Cash | `topUpUnits` |
 |---------|-------|-------------|-------------|
-| `starter` | $1.00 | $10,000 | 1 |
+| `starter` | $0.99 | $10,000 | 1 |
 | `booster` | $2.99 | $50,000 | 5 |
 | `mega` | $4.99 | $100,000 | 10 |
 
@@ -223,7 +227,7 @@ Market orders placed outside market hours are stored with `status: 'PENDING'` in
 ### Tournaments
 Monthly competitions running the full calendar month. One `Tournament` per `(month, year)` pair — created lazily via `getOrCreateCurrentTournament()` in `src/lib/tournament.ts`.
 
-- **Registration**: open until the 5th of each month (midnight EST on the 6th). `isRegistrationOpen()` checks this. Entry requires a $1 Stripe payment (dev mode: credited directly). Each `TournamentEntry` gets a fresh `$20,000` starting balance in an **isolated** portfolio (`TournamentHolding` model, separate from the user's main holdings).
+- **Registration**: open until the 5th of each month (midnight EST on the 6th). `isRegistrationOpen()` checks this. Entry requires a $1.99 Stripe payment (dev mode: credited directly). Each `TournamentEntry` gets a fresh `$20,000` starting balance in an **isolated** portfolio (`TournamentHolding` model, separate from the user's main holdings).
 - **Isolated portfolio**: tournament orders go to `/api/tournaments/[id]/orders` and use `TournamentHolding` + `TournamentEntry.cashBalance`, never touching the user's main `cashBalance` or `Holding` records.
 - **Lazy finalization**: on any GET to `/api/tournaments/[id]` (or `/api/tournaments`) after `endsAt < now`, `finalizeTournament()` ranks entries by `cashBalance + holdingsValue`, writes `finalBalance`/`rank`/`status=ENDED`, and credits the final balance back to each entrant's main `cashBalance`.
 - **Winner certificate**: PDF generated server-side at `/api/tournaments/[id]/certificate?userId=X` via `@react-pdf/renderer`.
@@ -233,6 +237,9 @@ Monthly competitions running the full calendar month. One `Tournament` per `(mon
 - **Timing-safe login**: if user not found, bcrypt compares against a dummy hash so response time doesn't reveal whether the phone number exists.
 - **Auth cookie**: `sameSite: 'lax'` (not `strict`) — required so the cookie survives cross-site redirects from Stripe back to `/dashboard`. `strict` drops the cookie on any external redirect.
 - **CSP**: headers set in `next.config.js` — allows Finnhub and Turnstile externals, blocks `frame-ancestors`, restricts `unsafe-eval` to scripts only. Auth and payment endpoints set `Cache-Control: no-store`.
+- **Session invalidation**: `User.tokenVersion` (int) increments on PIN change. Every `getSessionUser()` call does a DB lookup to verify the token's `tokenVersion` matches the current DB value — stale sessions from before a PIN change are rejected without needing Redis.
+- **Audit log**: `src/lib/audit.ts` → `writeAuditLog()` — fire-and-forget, never throws. Logs to `AuditLog` table. Called after login (success + failure), register, PIN change, order placement, league invite, tournament entry, cash top-up.
+- **Phone enumeration**: league invite returns the same ambiguous error (`'Unable to send invite to that number'`) whether the phone isn't found or is the requestor's own number.
 
 ### Market Hours
 `isMarketOpen()` in `src/lib/finnhub.ts` checks 9:30 AM–4:00 PM ET Mon–Fri using `Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York' })`. Used by the tick route to decide between real Finnhub prices and GBM simulation.
