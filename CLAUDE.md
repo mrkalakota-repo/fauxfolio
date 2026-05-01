@@ -17,8 +17,12 @@ npm run db:seed-profiles  # Seed 100 fake traders for leaderboard demo (must use
 npm run db:studio         # Open Prisma Studio
 npm run db:generate       # Regenerate Prisma client after schema changes
 
-# One-time DB setup (install the update_previous_close() PL/pgSQL function)
+# One-time DB setup (installs update_previous_close + nightly_close_snapshot functions)
 psql $DATABASE_URL -f prisma/functions.sql
+
+# Local dev — install midnight launchd agent (macOS only, runs nightly_close_snapshot at 00:00)
+./scripts/setup-local-cron.sh          # install
+./scripts/setup-local-cron.sh remove   # uninstall
 
 # E2E tests (requires PostgreSQL DATABASE_URL and JWT_SECRET in .env.local)
 npx playwright test --config e2e/playwright.config.ts                          # run all tests
@@ -89,7 +93,13 @@ The Finnhub batch position (`tickIndex`) is module-level and resets on Lambda co
 Stocks are created on-demand when first viewed via `/api/stocks/[symbol]` — calls Finnhub profile + quote and upserts to DB.
 
 ### MarketState
-Single row (`id = 1`) in the `market_state` table. Stores `vix` (used to scale GBM volatility) and `lastCloseDate` (`"YYYY-MM-DD"` ET string). The tick route compares `lastCloseDate` against the current ET date; when they differ it calls `update_previous_close()` (the PL/pgSQL function in `prisma/functions.sql`) and updates `lastCloseDate`. **If `functions.sql` has never been applied, `previousClose` never snapshots and day-change % is always 0.**
+Single row (`id = 1`) in the `market_state` table. Stores `vix` and `lastCloseDate` (`"YYYY-MM-DD"` ET string). `lastCloseDate` is written by `nightly_close_snapshot()` to prevent double-firing.
+
+`previousClose` is updated by a DB-level cron job, not the tick route:
+- **Production (Neon)**: `pg_cron` — two jobs at `0 5 * * *` and `0 4 * * *` UTC cover both EST and EDT midnight. Set up by running the commented `cron.schedule` calls in `prisma/functions.sql` once after enabling the `pg_cron` extension in Neon Console.
+- **Local dev (macOS)**: `scripts/setup-local-cron.sh` installs a launchd agent that fires at 00:00 local time.
+- `nightly_close_snapshot()` is idempotent — if both cron slots fire, the second is a no-op (checks `lastCloseDate` first).
+- **If `functions.sql` has never been applied, `previousClose` never snapshots and day-change % is always 0.**
 
 ### Database
 Schema provider is `postgresql`. Both local dev and production use PostgreSQL. Local dev uses Homebrew PostgreSQL@16 (`postgresql://mrkalakota@localhost/stocksim`).

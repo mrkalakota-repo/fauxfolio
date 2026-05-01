@@ -293,32 +293,6 @@ export async function POST(req: NextRequest) {
       await tx.priceHistory.deleteMany({ where: { timestamp: { lt: cutoff } } })
     })
 
-    // Snapshot currentPrice → previousClose once per trading day.
-    // Fires on the first tick after market close — the lastCloseDate guard ensures
-    // it only runs once regardless of how many ticks arrive while closed.
-    if (!isMarketOpen()) {
-      const etParts = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'America/New_York',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      }).formatToParts(new Date())
-      const y  = etParts.find(p => p.type === 'year')?.value ?? ''
-      const mo = etParts.find(p => p.type === 'month')?.value ?? ''
-      const d  = etParts.find(p => p.type === 'day')?.value ?? ''
-      const tradingDate = `${y}-${mo}-${d}`
-
-      const state = await prisma.marketState.findUnique({ where: { id: 1 } })
-      if (state?.lastCloseDate !== tradingDate) {
-        await prisma.$executeRaw`SELECT update_previous_close()`
-        await prisma.marketState.upsert({
-          where: { id: 1 },
-          create: { id: 1, lastCloseDate: tradingDate },
-          update: { lastCloseDate: tradingDate },
-        })
-      }
-    }
-
     // Create at most one portfolio snapshot per user per day for chart history
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
