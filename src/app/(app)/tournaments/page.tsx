@@ -15,7 +15,7 @@ export default function TournamentsPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  const { data, isLoading, mutate } = useSWR('/api/tournaments/current', fetcher, { refreshInterval: 15000 })
+  const { data, isLoading, mutate } = useSWR('/api/tournaments', fetcher, { refreshInterval: 15000 })
   const tournament = data?.tournament
   const entryStatus: string = data?.entryStatus ?? 'NONE'
   const entryId: string | null = data?.entryId ?? null

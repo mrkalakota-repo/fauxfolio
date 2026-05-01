@@ -138,7 +138,7 @@ export default function LandingPage() {
   const { data, isLoading } = useSWR<LeaderboardData>(
     '/api/leaderboard', fetcher, { refreshInterval: 30000 }
   )
-  const { data: tournamentData } = useSWR('/api/tournaments/current', fetcher, { refreshInterval: 60000 })
+  const { data: tournamentData } = useSWR('/api/tournaments', fetcher, { refreshInterval: 60000 })
 
   const leaderboard = data?.leaderboard ?? []
   const richest = data?.richest ?? null
