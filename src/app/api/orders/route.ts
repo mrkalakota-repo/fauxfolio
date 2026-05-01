@@ -3,6 +3,7 @@ import { getSessionUser } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { isMarketOpen } from '@/lib/finnhub'
 import { checkAndAwardBadges } from '@/lib/badges'
+import { writeAuditLog } from '@/lib/audit'
 
 export async function GET() {
   const session = await getSessionUser()
@@ -96,6 +97,12 @@ export async function POST(req: NextRequest) {
       const order = await prisma.order.create({
         data: { userId: session.userId, stockSymbol: symbol.toUpperCase(), type: 'MARKET', side, shares, status: 'PENDING' },
       })
+      await writeAuditLog({
+        userId: session.userId,
+        action: 'ORDER_PLACED',
+        resourceId: order.id,
+        metadata: { symbol: symbol.toUpperCase(), side, type: 'MARKET', shares, status: 'PENDING' },
+      })
       return NextResponse.json({
         order: { ...order, createdAt: order.createdAt.toISOString(), filledAt: null },
         message: 'Market is closed. Your order will execute at the next market open.',
@@ -179,6 +186,12 @@ export async function POST(req: NextRequest) {
         return order
       })
 
+      await writeAuditLog({
+        userId: session.userId,
+        action: 'ORDER_PLACED',
+        resourceId: result.id,
+        metadata: { symbol: symbol.toUpperCase(), side, type: 'MARKET', shares, fillPrice: stock.currentPrice, status: 'FILLED' },
+      })
       return NextResponse.json({
         order: { ...result, createdAt: result.createdAt.toISOString(), filledAt: result.filledAt?.toISOString() },
         message: `${side === 'BUY' ? 'Bought' : 'Sold'} ${shares} share${shares !== 1 ? 's' : ''} of ${symbol} at ${stock.currentPrice.toFixed(2)}`,
@@ -205,6 +218,12 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    await writeAuditLog({
+      userId: session.userId,
+      action: 'ORDER_PLACED',
+      resourceId: order.id,
+      metadata: { symbol: symbol.toUpperCase(), side, type: 'LIMIT', shares, limitPrice, status: 'PENDING' },
+    })
     return NextResponse.json({
       order: { ...order, createdAt: order.createdAt.toISOString(), filledAt: null },
       message: `Limit order placed: ${side} ${shares} ${symbol} @ $${limitPrice}`,

@@ -2,14 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
 import { getSessionUserFromRequest, validatePin } from '@/lib/auth'
-import { checkRateLimit, RATE_LIMITS } from '@/lib/rateLimit'
+import { checkRateLimitDb, RATE_LIMITS } from '@/lib/rateLimit'
+import { writeAuditLog } from '@/lib/audit'
 
 export async function POST(req: NextRequest) {
   const session = await getSessionUserFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
-  const rl = checkRateLimit(`change-pin:${session.userId}:${ip}`, RATE_LIMITS.AUTH.max, RATE_LIMITS.AUTH.windowMs)
+  const rl = await checkRateLimitDb(
+    `change-pin:${session.userId}:${ip}`,
+    RATE_LIMITS.AUTH.max,
+    RATE_LIMITS.AUTH.windowMs
+  )
   if (!rl.allowed) return NextResponse.json({ error: 'Too many attempts' }, { status: 429 })
 
   const body = await req.json()
@@ -31,7 +36,13 @@ export async function POST(req: NextRequest) {
   if (!valid) return NextResponse.json({ error: 'Current PIN is incorrect' }, { status: 401 })
 
   const hashed = await bcrypt.hash(newPin, 12)
-  await prisma.user.update({ where: { id: session.userId }, data: { pin: hashed } })
+  // Increment tokenVersion — invalidates all existing sessions immediately
+  await prisma.user.update({
+    where: { id: session.userId },
+    data: { pin: hashed, tokenVersion: { increment: 1 } },
+  })
+
+  await writeAuditLog({ userId: session.userId, action: 'PIN_CHANGED', ip })
 
   return NextResponse.json({ message: 'PIN updated successfully' })
 }

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { randomBytes } from 'crypto'
 import { getSessionUser, normalizePhone } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { writeAuditLog } from '@/lib/audit'
 
 export async function POST(
   req: NextRequest,
@@ -35,8 +37,11 @@ export async function POST(
     if (normalized.length < 10) return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 })
 
     const invitee = await prisma.user.findUnique({ where: { phone: normalized } })
-    if (!invitee) return NextResponse.json({ error: 'No account found with that phone number' }, { status: 404 })
-    if (invitee.id === session.userId) return NextResponse.json({ error: 'Cannot invite yourself' }, { status: 400 })
+    // Return the same error whether phone doesn't exist or it's the inviter's own number
+    // to prevent phone number enumeration by league members
+    if (!invitee || invitee.id === session.userId) {
+      return NextResponse.json({ error: 'Unable to send invite to that number' }, { status: 400 })
+    }
 
     const alreadyMember = await prisma.leagueMember.count({
       where: { leagueId, userId: invitee.id },
@@ -56,8 +61,15 @@ export async function POST(
         leagueId,
         inviterId: session.userId,
         inviteePhone: normalized,
+        token: randomBytes(32).toString('hex'),
         expiresAt,
       },
+    })
+    await writeAuditLog({
+      userId: session.userId,
+      action: 'LEAGUE_INVITE_SENT',
+      resourceId: leagueId,
+      ip: req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown',
     })
 
     return NextResponse.json({

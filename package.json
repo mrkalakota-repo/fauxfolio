@@ -11,7 +11,11 @@
     "db:seed": "ts-node -P tsconfig.seed.json prisma/seed.ts",
     "db:seed-profiles": "ts-node -P tsconfig.seed.json prisma/seed-profiles.ts",
     "db:studio": "prisma studio",
-    "db:generate": "prisma generate"
+    "db:generate": "prisma generate",
+    "cap:sync": "npx cap sync",
+    "cap:ios": "npx cap open ios",
+    "cap:android": "npx cap open android",
+    "cap:sync:android": "CAPACITOR_SERVER_URL=http://10.0.2.2:3000 npx cap sync android"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",

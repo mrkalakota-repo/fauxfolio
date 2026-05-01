@@ -2,25 +2,31 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
 import { signToken, COOKIE_NAME, normalizePhone, validatePin } from '@/lib/auth'
-import { checkRateLimit, RATE_LIMITS } from '@/lib/rateLimit'
+import { checkRateLimitDb, RATE_LIMITS } from '@/lib/rateLimit'
+import { writeAuditLog } from '@/lib/audit'
 
 async function verifyTurnstile(token: string | undefined, ip: string): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY
-  if (!secret) return true
+  // Fail closed in production if secret is not configured
+  if (!secret) return process.env.NODE_ENV !== 'production'
   if (!token) return false
-  const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ secret, response: token, remoteip: ip }),
-  })
-  const data = await res.json()
-  return data.success === true
+  try {
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret, response: token, remoteip: ip }),
+      signal: AbortSignal.timeout(5000),
+    })
+    const data = await res.json()
+    return data.success === true
+  } catch {
+    return false
+  }
 }
 
 export async function POST(req: NextRequest) {
-  // Rate limit by IP: 3 new accounts per hour
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
-  const rl = checkRateLimit(`register:${ip}`, RATE_LIMITS.REGISTER.max, RATE_LIMITS.REGISTER.windowMs)
+  const rl = await checkRateLimitDb(`register:${ip}`, RATE_LIMITS.REGISTER.max, RATE_LIMITS.REGISTER.windowMs)
   if (!rl.allowed) {
     return NextResponse.json(
       { error: 'Too many requests. Try again later.' },
@@ -73,7 +79,14 @@ export async function POST(req: NextRequest) {
       data: { userId: user.id, totalValue: 10000, cashBalance: 10000 },
     })
 
-    const token = await signToken({ userId: user.id, phone: user.phone, name: user.name })
+    await writeAuditLog({ userId: user.id, action: 'REGISTER', ip })
+
+    const token = await signToken({
+      userId: user.id,
+      phone: user.phone,
+      name: user.name,
+      tokenVersion: user.tokenVersion,
+    })
     const response = NextResponse.json({
       user: { id: user.id, phone: user.phone, name: user.name, cashBalance: user.cashBalance },
     })

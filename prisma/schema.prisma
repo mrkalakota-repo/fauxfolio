@@ -13,9 +13,10 @@ model User {
   pin          String             // bcrypt-hashed 6-digit PIN
   name         String
   cashBalance  Float    @default(10000)
-  totalTopUps  Int      @default(0)
-  optionsPnl   Float    @default(0)
-  createdAt    DateTime @default(now())
+  totalTopUps   Int      @default(0)
+  optionsPnl    Float    @default(0)
+  tokenVersion  Int      @default(0)
+  createdAt     DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   holdings           Holding[]
@@ -223,7 +224,7 @@ model LeagueInvite {
   leagueId     String
   inviterId    String
   inviteePhone String
-  token        String   @unique @default(cuid())
+  token        String   @unique
   status       String   @default("PENDING") // PENDING | ACCEPTED | DECLINED | EXPIRED
   expiresAt    DateTime
 
@@ -315,6 +316,30 @@ model UserBadge {
 
   @@unique([userId, badge])
   @@map("user_badges")
+}
+
+model RateLimitEntry {
+  key         String   @id
+  count       Int      @default(0)
+  windowStart DateTime
+  expiresAt   DateTime
+
+  @@index([expiresAt])
+  @@map("rate_limit_entries")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  resourceId String?
+  ip         String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_logs")
 }
 
 model MarketState {

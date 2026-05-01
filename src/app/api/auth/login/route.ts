@@ -2,25 +2,31 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
 import { signToken, COOKIE_NAME, normalizePhone } from '@/lib/auth'
-import { checkRateLimit, RATE_LIMITS } from '@/lib/rateLimit'
+import { checkRateLimitDb, RATE_LIMITS } from '@/lib/rateLimit'
+import { writeAuditLog } from '@/lib/audit'
 
 async function verifyTurnstile(token: string | undefined, ip: string): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY
-  if (!secret) return true // skip if not configured
+  // Fail closed in production if secret is not configured
+  if (!secret) return process.env.NODE_ENV !== 'production'
   if (!token) return false
-  const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ secret, response: token, remoteip: ip }),
-  })
-  const data = await res.json()
-  return data.success === true
+  try {
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret, response: token, remoteip: ip }),
+      signal: AbortSignal.timeout(5000),
+    })
+    const data = await res.json()
+    return data.success === true
+  } catch {
+    return false
+  }
 }
 
 export async function POST(req: NextRequest) {
-  // Rate limit by IP: 5 attempts per 15 minutes
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
-  const rl = checkRateLimit(`login:${ip}`, RATE_LIMITS.AUTH.max, RATE_LIMITS.AUTH.windowMs)
+  const rl = await checkRateLimitDb(`login:${ip}`, RATE_LIMITS.AUTH.max, RATE_LIMITS.AUTH.windowMs)
   if (!rl.allowed) {
     return NextResponse.json(
       { error: 'Too many login attempts. Try again later.' },
@@ -48,10 +54,18 @@ export async function POST(req: NextRequest) {
     const valid = await bcrypt.compare(pin, pinToCompare)
 
     if (!user || !valid) {
+      await writeAuditLog({ action: 'LOGIN_FAILURE', ip, metadata: { phone: normalizedPhone } })
       return NextResponse.json({ error: 'Invalid phone number or PIN' }, { status: 401 })
     }
 
-    const token = await signToken({ userId: user.id, phone: user.phone, name: user.name })
+    await writeAuditLog({ userId: user.id, action: 'LOGIN_SUCCESS', ip })
+
+    const token = await signToken({
+      userId: user.id,
+      phone: user.phone,
+      name: user.name,
+      tokenVersion: user.tokenVersion,
+    })
     const response = NextResponse.json({
       user: { id: user.id, phone: user.phone, name: user.name, cashBalance: user.cashBalance },
     })

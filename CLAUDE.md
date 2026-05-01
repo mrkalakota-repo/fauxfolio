@@ -17,15 +17,20 @@ npm run db:seed-profiles  # Seed 100 fake traders for leaderboard demo (must use
 npm run db:studio         # Open Prisma Studio
 npm run db:generate       # Regenerate Prisma client after schema changes
 
+# One-time DB setup (install the update_previous_close() PL/pgSQL function)
+psql $DATABASE_URL -f prisma/functions.sql
+
 # E2E tests (requires PostgreSQL DATABASE_URL and JWT_SECRET in .env.local)
 npx playwright test --config e2e/playwright.config.ts                          # run all tests
 npx playwright test --config e2e/playwright.config.ts e2e/tests/trading.spec.ts  # run one file
 npx playwright test --config e2e/playwright.config.ts --headed                # with browser UI
 
 # Mobile (must be in ~/Developer/StockTrader-Simulator — see Mobile section)
-npx cap sync              # Sync web assets and plugins to ios/ and android/
-npx cap open ios          # Open Xcode
-npx cap open android      # Open Android Studio
+npm run cap:sync          # Sync plugins to ios/ and android/ (iOS dev — localhost:3000)
+npm run cap:sync:android  # Sync for Android dev (uses 10.0.2.2:3000, not localhost)
+npm run cap:ios           # Open Xcode
+npm run cap:android       # Open Android Studio
+# Production: CAPACITOR_SERVER_URL=https://your-domain.com npx cap sync
 ```
 
 **npm install** always requires `--legacy-peer-deps` — `eslint-config-next@16` requires eslint >=9 but the project pins eslint@8.
@@ -35,8 +40,10 @@ npx cap open android      # Open Android Studio
 ## Environment Variables
 
 Two env files for local dev:
-- `.env` — Prisma CLI only: `DATABASE_URL="file:./dev.db"`
-- `.env.local` — Next.js: `JWT_SECRET`, `FINNHUB_API_KEY`, `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, etc.
+- `.env` — Prisma CLI only: `DATABASE_URL="postgresql://mrkalakota@localhost/stocksim"`
+- `.env.local` — Next.js: `DATABASE_URL`, `JWT_SECRET`, `FINNHUB_API_KEY`, `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, etc.
+
+**Optional**: `SIMULATION_VOLATILITY` (float, default `0.015`) — overrides GBM per-tick volatility for all stocks. Useful for stress-testing portfolio math without waiting for real market moves.
 
 **Cloudflare Turnstile** (bot protection on login/register): requires both `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (client-side, embedded at build time) and `TURNSTILE_SECRET_KEY` (server-side verify). If either is unset the widget silently disappears and all requests pass — safe for local dev. `NEXT_PUBLIC_TURNSTILE_SITE_KEY` must be echoed into `.env.production` in `amplify.yml` so Next.js embeds it at build time.
 
@@ -77,14 +84,17 @@ Next.js 16 renamed `middleware.ts` → `proxy.ts`. Only `src/proxy.ts` should ex
 1. During market hours + Finnhub key: fetches real prices for 5 stocks (rotating batch, stalest first) to respect the 60 req/min rate limit
 2. Otherwise: runs Geometric Brownian Motion simulation with sector correlations
 
+The Finnhub batch position (`tickIndex`) is module-level and resets on Lambda cold start — expected behaviour, not a bug.
+
 Stocks are created on-demand when first viewed via `/api/stocks/[symbol]` — calls Finnhub profile + quote and upserts to DB.
 
-### Database
-Schema provider is `postgresql` for production. Local dev uses SQLite via the `.env` split.
+### MarketState
+Single row (`id = 1`) in the `market_state` table. Stores `vix` (used to scale GBM volatility) and `lastCloseDate` (`"YYYY-MM-DD"` ET string). The tick route compares `lastCloseDate` against the current ET date; when they differ it calls `update_previous_close()` (the PL/pgSQL function in `prisma/functions.sql`) and updates `lastCloseDate`. **If `functions.sql` has never been applied, `previousClose` never snapshots and day-change % is always 0.**
 
-SQLite-specific constraints (relevant if reverting to SQLite locally):
-- No enum types — use `String` fields
-- No BigInt — `volume` and `marketCap` are `Float`
+### Database
+Schema provider is `postgresql`. Both local dev and production use PostgreSQL. Local dev uses Homebrew PostgreSQL@16 (`postgresql://mrkalakota@localhost/stocksim`).
+
+Prisma CLI reads from `.env`; Next.js dev server reads from `.env.local`. Both must have the PostgreSQL `DATABASE_URL`.
 
 Prisma client is a singleton in `src/lib/db.ts` to avoid hot-reload connection exhaustion.
 
@@ -104,10 +114,28 @@ Available cash packs are defined in `src/components/GetMoreCash.const.ts`:
 The checkout route (`/api/payments/create-checkout`) accepts a `packId` in the request body. Webhook at `/api/payments/webhook` uses idempotency via `stripeSessionId` and always reads `virtualAmount` from the DB record — never from Stripe metadata.
 
 ### Mobile (Capacitor)
-Server URL mode — Capacitor WebView loads the deployed URL, no static export needed.
+Server URL mode — Capacitor WebView loads the Next.js app from the server. No static export needed. `webDir` is set to `public/` (always exists) as a placeholder; it is not served to users when `server.url` is set.
 
-- Dev: `capacitor.config.ts` points to `http://localhost:3000`
-- Prod: set `CAPACITOR_SERVER_URL=https://your-domain.com` before `npx cap sync`
+**Dev workflow (iOS Simulator):**
+```bash
+npm run dev          # keep running in terminal 1
+npm run cap:sync     # sync plugins → ios/ and android/
+npm run cap:ios      # open Xcode → run on simulator
+```
+
+**Dev workflow (Android Emulator):**
+```bash
+npm run dev                      # keep running in terminal 1
+npm run cap:sync:android         # syncs with CAPACITOR_SERVER_URL=http://10.0.2.2:3000
+npm run cap:android              # open Android Studio → run on emulator
+```
+`10.0.2.2` is the Android emulator's alias for the host machine. `localhost` won't work inside the emulator. `network_security_config.xml` permits cleartext HTTP to both `localhost` and `10.0.2.2`.
+
+**Production workflow:**
+```bash
+CAPACITOR_SERVER_URL=https://your-domain.com npx cap sync
+# Then archive/build from Xcode / Android Studio
+```
 
 **Critical location**: Project must be in `~/Developer/`, NOT `~/Documents/`. iCloud Drive stamps `com.apple.macl` onto files in Documents; Xcode's sandboxed `actool` subprocess cannot read them.
 
@@ -154,9 +182,11 @@ Invites are by phone number (existing users only). Token-based join link: `/leag
 The league leaderboard (`/api/leagues/[id]/leaderboard`) fetches all members and their holdings in a single JOIN query. The league detail SWR and leaderboard SWR both refresh every 15 seconds.
 
 ### E2E Tests
-Playwright tests live in `e2e/` with a page-object model (`e2e/pages/`). Tests use a shared authenticated session stored in `e2e/.auth/user.json` (created by `auth.setup.ts`). Files matching `*.unauth.spec.ts` run without authentication.
+Playwright tests live in `e2e/` with a page-object model (`e2e/pages/`). Tests use a shared authenticated session stored in `e2e/.auth/user.json` (gitignored, auto-created by the `setup` project via `auth.setup.ts` — Playwright runs it automatically before other projects via `dependencies: ['setup']`). Files matching `*.unauth.spec.ts` skip auth entirely.
 
 `e2e/global-setup.ts` runs before any test and validates that `DATABASE_URL` is a PostgreSQL URL and `JWT_SECRET` is set — it exits with a clear error if not. SQLite will not work for E2E.
+
+Playwright config: `fullyParallel: false`, 1 worker locally (2 on CI), 30 s test timeout, 8 s `expect` timeout. Traces/screenshots/video are captured only on failure.
 
 To run against a different database without editing files: `DATABASE_URL="postgresql://..." npx playwright test --config e2e/playwright.config.ts`
 
