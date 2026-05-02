@@ -32,14 +32,14 @@ export default function PinInput({ value, onChange, onComplete, length = 6, auto
         value={value}
         onChange={handleChange}
         maxLength={length}
-        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+        className="absolute inset-0 w-full h-full cursor-pointer border-0 bg-transparent text-transparent caret-transparent focus:outline-none"
         autoComplete="one-time-code"
         autoFocus={autoFocus}
       />
-      {/* Visual dots */}
+      {/* Visual dots — onPointerDown is more reliable than onClick on Android WebView */}
       <div
         className="flex items-center justify-center gap-3 p-4 bg-white/5 border border-brand-border rounded-xl cursor-pointer"
-        onClick={() => inputRef.current?.focus()}
+        onPointerDown={() => inputRef.current?.focus()}
       >
         {dots.map((_, i) => (
           <div

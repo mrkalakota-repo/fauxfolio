@@ -73,10 +73,8 @@ export default function LoginPage() {
               <label className="block text-sm text-gray-400 mb-2 flex items-center gap-1.5">
                 <Lock className="w-3.5 h-3.5" /> PIN
               </label>
-              <PinInput value={pin} onChange={setPin} onComplete={() => {}} autoFocus />
+              <PinInput value={pin} onChange={setPin} onComplete={() => {}} />
             </div>
-
-            <TurnstileWidget />
 
             <button
               type="submit"
@@ -86,6 +84,7 @@ export default function LoginPage() {
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               Sign In
             </button>
+            <TurnstileWidget />
           </form>
 
           <div className="mt-4 pt-4 border-t border-brand-border">
