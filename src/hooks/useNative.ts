@@ -92,8 +92,21 @@ export function useAndroidBack(handler: () => void) {
   }, [handler])
 }
 
+async function hideSplash() {
+  try {
+    const mod = await import('@capacitor/splash-screen')
+    await mod.SplashScreen.hide()
+    // Force Android to recalculate touch coordinates after system bars reappear
+    // following the immersive splash transition
+    if (getPlatform() === 'android') {
+      window.dispatchEvent(new Event('resize'))
+    }
+  } catch { /* no-op */ }
+}
+
 export function useNativeInit() {
   useEffect(() => {
     initStatusBar()
+    if (isNative()) hideSplash()
   }, [])
 }
