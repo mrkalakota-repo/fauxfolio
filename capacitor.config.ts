@@ -1,11 +1,9 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-const serverUrl = process.env.CAPACITOR_SERVER_URL;
-const isProduction = !!serverUrl;
-
 // Android emulator routes host machine traffic through 10.0.2.2, not localhost.
 // Set CAPACITOR_SERVER_URL=http://10.0.2.2:3000 when syncing for Android dev.
 const devUrl = process.env.CAPACITOR_SERVER_URL ?? 'http://localhost:3000';
+const isProduction = devUrl.startsWith('https://');
 
 const config: CapacitorConfig = {
   appId: 'com.fauxfolio.app',
