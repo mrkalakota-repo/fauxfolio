@@ -14,26 +14,26 @@ export async function GET(req: NextRequest) {
   if (!rl.allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
 
   try {
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        cashBalance: true,
-        totalTopUps: true,
-        optionsPnl: true,
-        createdAt: true,
-        holdings: {
-          include: {
-            stock: { select: { currentPrice: true } },
-          },
-        },
-      },
-    })
+    // Single aggregating query — DB sums holdings value per user instead of loading all rows
+    const rows = await prisma.$queryRaw<Array<{
+      id: string
+      name: string
+      cashBalance: number
+      totalTopUps: number
+      optionsPnl: number
+      createdAt: Date
+      holdingsValue: number
+    }>>`
+      SELECT u.id, u.name, u."cashBalance", u."totalTopUps", u."optionsPnl", u."createdAt",
+        COALESCE(SUM(h.shares * s."currentPrice"), 0)::float AS "holdingsValue"
+      FROM users u
+      LEFT JOIN holdings h ON h."userId" = u.id
+      LEFT JOIN stocks s ON s.symbol = h."stockSymbol"
+      GROUP BY u.id
+    `
 
-    const computed = users.map(user => {
-      const holdingsValue = user.holdings.reduce(
-        (sum, h) => sum + h.stock.currentPrice * h.shares, 0
-      )
+    const computed = rows.map(user => {
+      const holdingsValue = user.holdingsValue
       // True portfolio value (includes options P&L via cashBalance)
       const grossValue = user.cashBalance + holdingsValue
       // Stock-only value used for rankings — options P&L excluded for fairness
@@ -76,14 +76,17 @@ export async function GET(req: NextRequest) {
       _sum: { fillPrice: true },
     })
 
-    return NextResponse.json({
-      leaderboard: ranked,
-      richest,
-      stats: {
-        totalTraders,
-        totalVirtualVolume: (totalOrdersValue._sum.fillPrice ?? 0) * 1,
+    return NextResponse.json(
+      {
+        leaderboard: ranked,
+        richest,
+        stats: {
+          totalTraders,
+          totalVirtualVolume: (totalOrdersValue._sum.fillPrice ?? 0) * 1,
+        },
       },
-    })
+      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } }
+    )
   } catch (error) {
     console.error('[leaderboard]', error)
     return NextResponse.json({ error: 'Failed to fetch leaderboard' }, { status: 500 })

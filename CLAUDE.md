@@ -35,6 +35,12 @@ npm run cap:sync:android  # Sync for Android dev (uses 10.0.2.2:3000, not localh
 npm run cap:ios           # Open Xcode
 npm run cap:android       # Open Android Studio
 # Production: CAPACITOR_SERVER_URL=https://your-domain.com npx cap sync
+
+# Android physical device (USB) — run BEFORE launching from Android Studio:
+adb reverse tcp:3000 tcp:3000
+# Then sync with localhost so both emulator and physical device use the same build:
+CAPACITOR_SERVER_URL=http://localhost:3000 npx cap sync android
+# Re-run adb reverse each time the device reconnects (USB debugging must be enabled)
 ```
 
 **npm install** always requires `--legacy-peer-deps` — `eslint-config-next@16` requires eslint >=9 but the project pins eslint@8.
@@ -50,6 +56,8 @@ Two env files for local dev:
 **Optional**: `SIMULATION_VOLATILITY` (float, default `0.015`) — overrides GBM per-tick volatility for all stocks. Useful for stress-testing portfolio math without waiting for real market moves.
 
 **Cloudflare Turnstile** (bot protection on login/register): requires both `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (client-side, embedded at build time) and `TURNSTILE_SECRET_KEY` (server-side verify). If either is unset the widget silently disappears and all requests pass — safe for local dev. `NEXT_PUBLIC_TURNSTILE_SITE_KEY` must be echoed into `.env.production` in `amplify.yml` so Next.js embeds it at build time.
+
+Native apps (iOS/Android) bypass Turnstile entirely: the client sends `nativeApp: true` in the request body (set via `isNative()` from `src/hooks/useNative.ts`), and the login/register API routes skip `verifyTurnstile()` when `nativeApp === true`. The `TurnstileWidget` component also skips rendering on native via the same `isNative()` guard.
 
 **On AWS Amplify**: env vars set in the Amplify Console are NOT automatically injected into the SSR Lambda at runtime. The `amplify.yml` build phase writes them to `.env.production` so Next.js picks them up inside the Lambda package.
 
@@ -157,6 +165,8 @@ CAPACITOR_SERVER_URL=https://your-domain.com npx cap sync
 
 Use `window.Capacitor.getPlatform()` for platform detection — more reliable than importing `@capacitor/core` in a Next.js bundle context. `useAndroidBack` is Android-only; always guard with `getPlatform() !== 'android'`.
 
+The `<html>` element in `src/app/layout.tsx` has `suppressHydrationWarning` — Capacitor injects CSS custom properties (`--safe-area-inset-top` etc.) onto the html element at runtime, causing a React hydration mismatch without it. Do not remove this attribute.
+
 ### Data Fetching
 Client components use SWR with a `fetch` fetcher. After order placement, call `mutate('/api/portfolio')` and `mutate('/api/orders')` to refresh immediately.
 
@@ -243,6 +253,17 @@ Monthly competitions running the full calendar month. One `Tournament` per `(mon
 
 ### Market Hours
 `isMarketOpen()` in `src/lib/finnhub.ts` checks 9:30 AM–4:00 PM ET Mon–Fri using `Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York' })`. Used by the tick route to decide between real Finnhub prices and GBM simulation.
+
+### Performance Patterns
+- **Tick deduplication**: `src/app/api/simulation/tick/route.ts` has a module-level `lastTickAt` timestamp. Concurrent requests from multiple clients within 6 s skip the heavy DB transaction and return `{ skipped: true }`. This is intentional — do not remove it.
+- **SWR intervals**: portfolio/orders endpoints poll at 15–30 s (not 8 s). Only the stock price endpoint on stock detail pages polls at 8 s. Do not add new SWR hooks with intervals <8 s.
+- **Leaderboard query**: uses `$queryRaw` with a SQL aggregate (`SUM(shares * currentPrice)`) instead of loading all holdings into Node.js memory. If you change the leaderboard query, keep the aggregation in SQL.
+- **Chart lazy-loading**: `PortfolioChart`, `StockChart`, and `HoldingsPieChart` are dynamically imported with `next/dynamic` + `ssr: false` so recharts (~40 KB gzipped) is not in the initial bundle.
+- **Cache-Control**: leaderboard and movers routes set `public, s-maxage=60`. Auth and payment routes set `no-store` (configured in `next.config.js`). All other authenticated routes have no cache header (correct — they're user-specific).
+- **Flash animations**: `StockRow` mutates the DOM via `ref.current.classList.add/remove` to avoid a React re-render on every price tick. Do not convert this back to `useState`.
+- **DB indexes**: `Order` has `@@index([status, type])` and `@@index([userId, createdAt])` — required for the tick route's pending-order queries to stay fast as order volume grows.
+- **Mobile safe area**: mobile header in `AppShell` uses `calc(env(safe-area-inset-top, 0px) + 0.75rem)` as top padding. `viewport-fit=cover` in the root layout means the WebView extends under Android's status bar — this padding keeps the hamburger button visible.
+- **Android dev**: Capacitor app is baked with `http://localhost:3000`. Run `adb reverse tcp:3000 tcp:3000` before testing on a physical Android device (required each time the device reconnects). Without it the app shows a blank screen.
 
 ### Styling
 Tailwind uses custom `brand.*` tokens: `brand-dark` (page background), `brand-surface` (card background), `brand-border`, `brand-muted`. Custom animations: `ticker` (40 s marquee loop), `priceUp`/`priceDown` (0.5 s highlight flash), `slideUp`/`fadeIn` (0.3 s entry). Remote image domains (Clearbit logos, ui-avatars) are allowlisted in `next.config.js` under `remotePatterns`.

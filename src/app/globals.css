@@ -76,10 +76,11 @@
   --sal: env(safe-area-inset-left, 0px);
 }
 
-/* Native app feel: disable callouts, highlights, selections on interactive elements */
-button, a, [role="button"] {
+/* Native app feel: disable callouts, highlights, 300ms tap delay on Android WebView */
+button, a, input, [role="button"] {
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
 /* Bottom nav / fixed bars should respect home indicator */

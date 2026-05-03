@@ -8,6 +8,7 @@ import { TrendingUp, Loader2, Phone, Lock, User } from 'lucide-react'
 import PinInput from '@/components/auth/PinInput'
 import PhoneInput from '@/components/auth/PhoneInput'
 import TurnstileWidget from '@/components/auth/Turnstile'
+import { isNative } from '@/hooks/useNative'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -34,15 +35,16 @@ export default function RegisterPage() {
 
     setLoading(true)
     try {
+      const native = isNative()
       const cfToken = (document.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement)?.value
-      if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !cfToken) {
+      if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !cfToken && !native) {
         toast.error('Complete the human verification before registering')
         return
       }
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, pin, name, cfToken }),
+        body: JSON.stringify({ phone, pin, name, cfToken, nativeApp: native }),
       })
       const data = await res.json()
       if (!res.ok) { toast.error(data.error || 'Registration failed'); return }

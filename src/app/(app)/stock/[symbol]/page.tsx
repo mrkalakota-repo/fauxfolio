@@ -6,7 +6,8 @@ import { useParams } from 'next/navigation'
 import { ArrowLeft, Star, TrendingUp, TrendingDown } from 'lucide-react'
 import Link from 'next/link'
 import { cn, formatCurrency, formatPercent, formatChange, formatLargeNumber, formatNumber } from '@/lib/utils'
-import StockChart from '@/components/charts/StockChart'
+import dynamic from 'next/dynamic'
+const StockChart = dynamic(() => import('@/components/charts/StockChart'), { ssr: false })
 import TradingPanel from '@/components/trading/TradingPanel'
 import OptionsPanel from '@/components/trading/OptionsPanel'
 import GetMoreCashModal from '@/components/GetMoreCashModal'
@@ -27,7 +28,7 @@ export default function StockPage() {
   const [priceFlash, setPriceFlash] = useState('')
 
   const { data: stockData, isLoading: stockLoading } = useSWR<{ stock: Stock; error?: string }>(
-    `/api/stocks/${symbol}`, fetcher, { refreshInterval: 4000 }
+    `/api/stocks/${symbol}`, fetcher, { refreshInterval: 8000 }
   )
   const { data: historyData, isLoading: histLoading } = useSWR<{ history: PricePoint[] }>(
     `/api/stocks/${symbol}/history?range=${range}`, fetcher, { refreshInterval: 8000 }
@@ -35,7 +36,7 @@ export default function StockPage() {
   const { data: watchlistData, mutate: mutateWatchlist } = useSWR<{ watchlist: WatchlistItem[] }>(
     '/api/watchlist', fetcher
   )
-  const { data: portfolioData } = useSWR('/api/portfolio', fetcher, { refreshInterval: 8000 })
+  const { data: portfolioData } = useSWR('/api/portfolio', fetcher, { refreshInterval: 30000 })
 
   const stock = stockData?.stock
   const history = historyData?.history ?? []

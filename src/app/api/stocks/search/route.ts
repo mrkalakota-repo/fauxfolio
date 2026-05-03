@@ -24,18 +24,19 @@ export async function GET(req: NextRequest) {
   try {
     const upper = sanitized.toUpperCase()
 
-    const dbResults = await prisma.stock.findMany({
-      where: {
-        OR: [
-          { symbol: { contains: upper } },
-          { name: { contains: sanitized } },
-        ],
-      },
-      take: 8,
-      select: { symbol: true, name: true, sector: true, currentPrice: true, previousClose: true },
-    })
-
-    const finnhubResults = await searchSymbols(sanitized)
+    const [dbResults, finnhubResults] = await Promise.all([
+      prisma.stock.findMany({
+        where: {
+          OR: [
+            { symbol: { contains: upper } },
+            { name: { contains: sanitized } },
+          ],
+        },
+        take: 8,
+        select: { symbol: true, name: true, sector: true, currentPrice: true, previousClose: true },
+      }),
+      searchSymbols(sanitized),
+    ])
     const finnhubMapped = finnhubResults.map(r => ({
       symbol: r.symbol,
       name: r.description,

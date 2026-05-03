@@ -94,6 +94,8 @@ model Order {
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   stock Stock @relation(fields: [stockSymbol], references: [symbol])
 
+  @@index([status, type])
+  @@index([userId, createdAt])
   @@map("orders")
 }
 

@@ -1,7 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
-import { cn } from '@/lib/utils'
+import { useRef } from 'react'
 
 interface Props {
   value: string
@@ -20,41 +19,26 @@ export default function PinInput({ value, onChange, onComplete, length = 6, auto
     if (raw.length === length) onComplete?.(raw)
   }
 
-  const dots = Array.from({ length })
-
   return (
-    <div className="relative">
-      {/* Hidden real input */}
+    <div>
       <input
         ref={inputRef}
-        type="password"
+        type="tel"
         inputMode="numeric"
+        pattern="[0-9]*"
         value={value}
         onChange={handleChange}
         maxLength={length}
-        className="absolute inset-0 w-full h-full cursor-pointer border-0 bg-transparent text-transparent caret-transparent focus:outline-none"
-        autoComplete="one-time-code"
         autoFocus={autoFocus}
+        autoComplete="one-time-code"
+        placeholder="tap to enter PIN"
+        className="w-full p-4 bg-white/5 border border-brand-border rounded-xl text-center text-2xl tracking-[0.4em] text-white placeholder-gray-600 focus:outline-none focus:border-green-500/50"
+        style={{
+          WebkitTextSecurity: 'disc',
+          touchAction: 'manipulation',
+          WebkitTapHighlightColor: 'transparent',
+        } as React.CSSProperties}
       />
-      {/* Visual dots — onPointerDown is more reliable than onClick on Android WebView */}
-      <div
-        className="flex items-center justify-center gap-3 p-4 bg-white/5 border border-brand-border rounded-xl cursor-pointer"
-        onPointerDown={() => inputRef.current?.focus()}
-      >
-        {dots.map((_, i) => (
-          <div
-            key={i}
-            className={cn(
-              'w-3 h-3 rounded-full transition-all duration-150',
-              i < value.length
-                ? 'bg-green-500 scale-110'
-                : i === value.length
-                ? 'bg-green-500/50 scale-100 animate-pulse'
-                : 'bg-white/20'
-            )}
-          />
-        ))}
-      </div>
       {value.length > 0 && (
         <p className="text-xs text-gray-500 text-center mt-1.5">{value.length}/{length} digits entered</p>
       )}

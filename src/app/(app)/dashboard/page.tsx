@@ -7,7 +7,8 @@ import Link from 'next/link'
 import { TrendingUp, TrendingDown, DollarSign, Wallet, Circle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatCurrency, formatPercent, formatChange, getChangeColor, cn } from '@/lib/utils'
-import PortfolioChart from '@/components/charts/PortfolioChart'
+import dynamic from 'next/dynamic'
+const PortfolioChart = dynamic(() => import('@/components/charts/PortfolioChart'), { ssr: false })
 import StockRow from '@/components/StockRow'
 import type { Portfolio, Stock } from '@/types'
 
@@ -16,10 +17,10 @@ const fetcher = (url: string) => fetch(url).then(r => r.json())
 export default function DashboardPage() {
   const searchParams = useSearchParams()
   const { data: portfolioData, isLoading: portLoading } = useSWR<Portfolio>(
-    '/api/portfolio', fetcher, { refreshInterval: 8000 }
+    '/api/portfolio', fetcher, { refreshInterval: 30000 }
   )
   const { data: stocksData } = useSWR<{ stocks: Stock[]; marketOpen: boolean }>(
-    '/api/stocks', fetcher, { refreshInterval: 8000 }
+    '/api/stocks', fetcher, { refreshInterval: 30000 }
   )
   const { data: moversData } = useSWR<{ gainers: Stock[]; losers: Stock[]; marketOpen: boolean }>(
     '/api/stocks/movers', fetcher, { refreshInterval: 60000 }

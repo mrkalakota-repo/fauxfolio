@@ -17,7 +17,7 @@ export default function WatchlistPage() {
   const [stockSuggestions, setStockSuggestions] = useState<Stock[]>([])
 
   const { data, mutate, isLoading } = useSWR<{ watchlist: WatchlistItem[] }>(
-    '/api/watchlist', fetcher, { refreshInterval: 4000 }
+    '/api/watchlist', fetcher, { refreshInterval: 8000 }
   )
 
   const watchlist = data?.watchlist ?? []
@@ -25,16 +25,9 @@ export default function WatchlistPage() {
   async function searchStocks(q: string) {
     setAddSymbol(q)
     if (q.length < 1) { setStockSuggestions([]); return }
-    const res = await fetch('/api/stocks')
+    const res = await fetch(`/api/stocks/search?q=${encodeURIComponent(q)}`)
     const d = await res.json()
-    setStockSuggestions(
-      (d.stocks || [])
-        .filter((s: Stock) =>
-          s.symbol.toLowerCase().includes(q.toLowerCase()) ||
-          s.name.toLowerCase().includes(q.toLowerCase())
-        )
-        .slice(0, 6)
-    )
+    setStockSuggestions((d.results ?? []).slice(0, 6))
   }
 
   async function addToWatchlist(symbol: string) {

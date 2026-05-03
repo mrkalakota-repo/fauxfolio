@@ -1,16 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import {
-  PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
-} from 'recharts'
-import {
   cn, formatCurrency, formatPercent, formatChange, getChangeColor,
 } from '@/lib/utils'
-import PortfolioChart from '@/components/charts/PortfolioChart'
+import dynamic from 'next/dynamic'
+const PortfolioChart = dynamic(() => import('@/components/charts/PortfolioChart'), { ssr: false })
+const HoldingsPieChart = dynamic(() => import('@/components/charts/HoldingsPieChart'), { ssr: false })
 import type { Portfolio } from '@/types'
 
 interface OptionPositionRow {
@@ -38,10 +37,10 @@ const COLORS = ['#4ade80', '#60a5fa', '#f59e0b', '#f472b6', '#a78bfa', '#34d399'
 
 export default function PortfolioPage() {
   const { data, isLoading } = useSWR<Portfolio>('/api/portfolio', fetcher, {
-    refreshInterval: 8000,
+    refreshInterval: 15000,
   })
   const { data: optionsData, mutate: mutateOptions } = useSWR<{ positions: OptionPositionRow[] }>(
-    '/api/options/positions', fetcher, { refreshInterval: 8000 }
+    '/api/options/positions', fetcher, { refreshInterval: 15000 }
   )
   const [closingId, setClosingId] = useState<string | null>(null)
 
@@ -66,19 +65,17 @@ export default function PortfolioPage() {
 
   const portfolio = data
 
-  const pieData = portfolio?.holdings.map((h, i) => ({
-    name: h.stockSymbol,
-    value: parseFloat((h.currentValue ?? 0).toFixed(2)),
-    color: COLORS[i % COLORS.length],
-  })) ?? []
-
-  if (portfolio?.user.cashBalance) {
-    pieData.push({
-      name: 'Cash',
-      value: parseFloat(portfolio.user.cashBalance.toFixed(2)),
-      color: '#6B7280',
-    })
-  }
+  const pieData = useMemo(() => {
+    const entries = portfolio?.holdings.map((h, i) => ({
+      name: h.stockSymbol,
+      value: parseFloat((h.currentValue ?? 0).toFixed(2)),
+      color: COLORS[i % COLORS.length],
+    })) ?? []
+    if (portfolio?.user.cashBalance) {
+      entries.push({ name: 'Cash', value: parseFloat(portfolio.user.cashBalance.toFixed(2)), color: '#6B7280' })
+    }
+    return entries
+  }, [portfolio?.holdings, portfolio?.user.cashBalance])
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 animate-fade-in">
@@ -127,39 +124,7 @@ export default function PortfolioPage() {
         <div className="card p-5">
           <h2 className="font-semibold mb-4">Allocation</h2>
           {pieData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="45%"
-                  innerRadius={55}
-                  outerRadius={85}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {pieData.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1A1A1A',
-                    border: '1px solid #2A2A2A',
-                    borderRadius: '12px',
-                    fontSize: '12px',
-                  }}
-                  formatter={(v: number) => [formatCurrency(v), '']}
-                />
-                <Legend
-                  iconType="circle"
-                  iconSize={8}
-                  formatter={(value) => (
-                    <span style={{ color: '#9CA3AF', fontSize: '12px' }}>{value}</span>
-                  )}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            <HoldingsPieChart data={pieData} />
           ) : (
             <div className="h-48 flex items-center justify-center text-gray-500 text-sm">
               No holdings yet

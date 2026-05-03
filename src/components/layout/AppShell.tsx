@@ -251,7 +251,10 @@ export default function AppShell({
       )}
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="md:hidden flex items-center justify-between px-4 py-3 bg-brand-surface border-b border-brand-border">
+        <header
+          className="md:hidden flex items-center justify-between px-4 bg-brand-surface border-b border-brand-border"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)', paddingBottom: '0.75rem' }}
+        >
           <button onClick={() => setMobileOpen(true)}>
             <Menu className="w-5 h-5" />
           </button>
@@ -266,7 +269,7 @@ export default function AppShell({
 
         <SimulationTicker />
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
           {children}
         </main>
       </div>

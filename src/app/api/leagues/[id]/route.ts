@@ -74,22 +74,36 @@ async function finalizeLeague(
   leagueId: string,
   members: Array<{ id: string; userId: string; startingPortfolio: number }>
 ) {
-  const ranked = await Promise.all(
-    members.map(async m => {
-      const user = await prisma.user.findUnique({
-        where: { id: m.userId },
-        select: { cashBalance: true },
-      })
-      const holdings = await prisma.holding.findMany({
-        where: { userId: m.userId },
-        include: { stock: { select: { currentPrice: true } } },
-      })
-      const holdingsValue = holdings.reduce((s, h) => s + h.stock.currentPrice * h.shares, 0)
-      const finalPortfolio = (user?.cashBalance ?? 0) + holdingsValue
-      const growthPct = (finalPortfolio - m.startingPortfolio) / m.startingPortfolio * 100
-      return { memberId: m.id, finalPortfolio, growthPct }
-    })
-  )
+  const memberIds = members.map(m => m.userId)
+
+  // Batch: 2 queries instead of 2×N
+  const [users, allHoldings] = await Promise.all([
+    prisma.user.findMany({
+      where: { id: { in: memberIds } },
+      select: { id: true, cashBalance: true },
+    }),
+    prisma.holding.findMany({
+      where: { userId: { in: memberIds } },
+      include: { stock: { select: { currentPrice: true } } },
+    }),
+  ])
+
+  const userMap = new Map(users.map(u => [u.id, u]))
+  const holdingsByUser = new Map<string, typeof allHoldings>()
+  for (const h of allHoldings) {
+    const list = holdingsByUser.get(h.userId) ?? []
+    list.push(h)
+    holdingsByUser.set(h.userId, list)
+  }
+
+  const ranked = members.map(m => {
+    const user = userMap.get(m.userId)
+    const holdings = holdingsByUser.get(m.userId) ?? []
+    const holdingsValue = holdings.reduce((s, h) => s + h.stock.currentPrice * h.shares, 0)
+    const finalPortfolio = (user?.cashBalance ?? 0) + holdingsValue
+    const growthPct = (finalPortfolio - m.startingPortfolio) / m.startingPortfolio * 100
+    return { memberId: m.id, finalPortfolio, growthPct }
+  })
 
   ranked.sort((a, b) => b.growthPct - a.growthPct)
 

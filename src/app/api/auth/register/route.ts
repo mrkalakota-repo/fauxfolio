@@ -36,9 +36,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { phone, pin, name, cfToken } = body
+    const { phone, pin, name, cfToken, nativeApp } = body
 
-    const human = await verifyTurnstile(cfToken, ip)
+    const human = nativeApp === true ? true : await verifyTurnstile(cfToken, ip)
     if (!human) return NextResponse.json({ error: 'Human verification failed. Please try again.' }, { status: 403 })
 
     if (!phone || !pin || !name ||

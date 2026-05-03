@@ -25,7 +25,10 @@ export async function GET(req: NextRequest) {
 
   // Serve from cache if fresh and market is open (prices change; off-hours cache is fine longer)
   if (cache && Date.now() - cache.fetchedAt < (marketOpen ? CACHE_TTL_MS : 5 * 60_000)) {
-    return NextResponse.json({ ...cache.movers, marketOpen, cached: true })
+    return NextResponse.json(
+      { ...cache.movers, marketOpen, cached: true },
+      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' } }
+    )
   }
 
   const stocks = await prisma.stock.findMany({
@@ -72,5 +75,8 @@ export async function GET(req: NextRequest) {
   }
 
   cache = { movers, fetchedAt: Date.now() }
-  return NextResponse.json({ ...movers, marketOpen })
+  return NextResponse.json(
+    { ...movers, marketOpen },
+    { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' } }
+  )
 }

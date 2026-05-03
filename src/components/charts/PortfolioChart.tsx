@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer,
@@ -29,13 +30,19 @@ export default function PortfolioChart({ data, loading }: Props) {
   const isPositive = data.length > 1 && data[data.length - 1].totalValue >= data[0].totalValue
   const color = isPositive ? '#4ade80' : '#f87171'
 
-  const chartData = data.map(p => ({
+  const chartData = useMemo(() => data.map(p => ({
     date: format(new Date(p.snapshotAt), 'MMM d'),
     value: p.totalValue,
-  }))
+  })), [data])
 
-  const minVal = Math.min(...chartData.map(d => d.value)) * 0.995
-  const maxVal = Math.max(...chartData.map(d => d.value)) * 1.005
+  const { minVal, maxVal } = useMemo(() => {
+    if (!chartData.length) return { minVal: 0, maxVal: 1 }
+    const vals = chartData.map(d => d.value)
+    return {
+      minVal: Math.min(...vals) * 0.995,
+      maxVal: Math.max(...vals) * 1.005,
+    }
+  }, [chartData])
 
   return (
     <ResponsiveContainer width="100%" height={192}>

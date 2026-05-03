@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { isNative } from '@/hooks/useNative'
 
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
@@ -18,7 +19,9 @@ export default function TurnstileWidget() {
   const widgetIdRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!SITE_KEY || !containerRef.current) return
+    // Turnstile is web-only bot protection — skip in Capacitor native apps to avoid
+    // the Cloudflare iframe intercepting all touch events on Android WebView
+    if (!SITE_KEY || !containerRef.current || isNative()) return
 
     let intervalId: ReturnType<typeof setInterval> | null = null
 

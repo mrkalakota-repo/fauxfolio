@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 // Android emulator routes host machine traffic through 10.0.2.2, not localhost.
 // Set CAPACITOR_SERVER_URL=http://10.0.2.2:3000 when syncing for Android dev.
 const devUrl = process.env.CAPACITOR_SERVER_URL ?? 'http://localhost:3000';
-const isProduction = devUrl.startsWith('https://');
+const isProduction = devUrl.startsWith('https://'); // used for cleartext + debugging flags
 
 const config: CapacitorConfig = {
   appId: 'com.fauxfolio.app',
@@ -14,7 +14,7 @@ const config: CapacitorConfig = {
   webDir: 'public',
 
   server: {
-    url: isProduction ? serverUrl! : devUrl,
+    url: devUrl,
     cleartext: !isProduction,
   },
 
@@ -31,7 +31,7 @@ const config: CapacitorConfig = {
     // allowMixedContent only matters when NOT using a dedicated server.url;
     // network_security_config.xml handles dev cleartext for localhost / 10.0.2.2.
     allowMixedContent: false,
-    captureInput: true,
+
     webContentsDebuggingEnabled: !isProduction,
   },
 
@@ -43,7 +43,7 @@ const config: CapacitorConfig = {
       androidSplashResourceName: 'splash',
       androidScaleType: 'CENTER_CROP',
       showSpinner: false,
-      splashFullScreen: true,
+      splashFullScreen: false,
       splashImmersive: false,
     },
     StatusBar: {

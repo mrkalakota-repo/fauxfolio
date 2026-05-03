@@ -12,6 +12,11 @@ const BATCH_SIZE = 5
 // Track round-robin position across ticks (module-level, resets on cold start)
 let tickIndex = 0
 
+// Deduplication: if N clients fire simultaneously, only one runs the heavy work.
+// Others get a fast 200 with skipped:true. Window slightly under the 8s client interval.
+let lastTickAt = 0
+const TICK_DEDUP_MS = 6000
+
 export async function GET(req: NextRequest) {
   const session = await getSessionUserFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -25,6 +30,14 @@ export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
   const rl = checkRateLimit(`tick:${session.userId}:${ip}`, RATE_LIMITS.TICK.max, RATE_LIMITS.TICK.windowMs)
   if (!rl.allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+
+  // Deduplicate concurrent ticks from multiple clients on the same Lambda instance.
+  // The heavy DB transaction only runs once per TICK_DEDUP_MS window.
+  const now = Date.now()
+  if (now - lastTickAt < TICK_DEDUP_MS) {
+    return NextResponse.json({ skipped: true, marketOpen: isMarketOpen() })
+  }
+  lastTickAt = now
 
   try {
     const stocks = await prisma.stock.findMany({

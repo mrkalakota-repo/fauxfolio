@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { cn, formatCurrency, formatPercent } from '@/lib/utils'
 
 interface StockRowProps {
@@ -17,14 +17,14 @@ interface StockRowProps {
 
 export default function StockRow({ stock, showName = true }: StockRowProps) {
   const prevPrice = useRef(stock.currentPrice)
-  const [flashClass, setFlashClass] = useState('')
+  const rowRef = useRef<HTMLAnchorElement>(null)
 
   useEffect(() => {
     if (stock.currentPrice !== prevPrice.current) {
       const cls = stock.currentPrice > prevPrice.current ? 'flash-green' : 'flash-red'
-      setFlashClass(cls)
       prevPrice.current = stock.currentPrice
-      const t = setTimeout(() => setFlashClass(''), 600)
+      rowRef.current?.classList.add(cls)
+      const t = setTimeout(() => rowRef.current?.classList.remove(cls), 600)
       return () => clearTimeout(t)
     }
   }, [stock.currentPrice])
@@ -33,11 +33,9 @@ export default function StockRow({ stock, showName = true }: StockRowProps) {
 
   return (
     <Link
+      ref={rowRef}
       href={`/stock/${stock.symbol}`}
-      className={cn(
-        'flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 transition-colors',
-        flashClass
-      )}
+      className="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 transition-colors"
     >
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 bg-white/5 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0">
