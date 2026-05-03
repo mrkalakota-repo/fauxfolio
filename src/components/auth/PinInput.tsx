@@ -31,8 +31,8 @@ export default function PinInput({ value, onChange, onComplete, length = 6, auto
         maxLength={length}
         autoFocus={autoFocus}
         autoComplete="one-time-code"
-        placeholder="tap to enter PIN"
-        className="w-full p-4 bg-white/5 border border-brand-border rounded-xl text-center text-2xl tracking-[0.4em] text-white placeholder-gray-600 focus:outline-none focus:border-green-500/50"
+        placeholder="Enter PIN"
+        className="w-full bg-white/5 border border-brand-border rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500 transition-colors"
         style={{
           WebkitTextSecurity: 'disc',
           touchAction: 'manipulation',

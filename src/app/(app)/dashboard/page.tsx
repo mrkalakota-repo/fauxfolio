@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import Link from 'next/link'
-import { TrendingUp, TrendingDown, DollarSign, Wallet, Circle } from 'lucide-react'
+import { TrendingUp, TrendingDown, DollarSign, Wallet, Circle, ShieldCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatCurrency, formatPercent, formatChange, getChangeColor, cn } from '@/lib/utils'
 import dynamic from 'next/dynamic'
@@ -82,6 +82,12 @@ export default function DashboardPage() {
         >
           View All Stocks
         </Link>
+      </div>
+
+      {/* Simulated trading disclaimer */}
+      <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm font-medium">
+        <ShieldCheck className="w-4 h-4 shrink-0" />
+        Simulated Trading Only — No real money involved. All balances are virtual.
       </div>
 
       {/* Stats cards */}
