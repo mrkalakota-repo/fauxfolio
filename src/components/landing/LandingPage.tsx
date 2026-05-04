@@ -530,7 +530,7 @@ export default function LandingPage() {
               href="/register"
               className="flex-shrink-0 flex items-center gap-1.5 bg-green-500 hover:bg-green-400 text-black font-bold text-sm px-4 py-2.5 rounded-xl transition-colors"
             >
-              {registrationOpen ? 'Join Free' : 'Sign Up'} <ArrowUpRight className="w-3.5 h-3.5" />
+              {registrationOpen ? 'Enter — $1.99' : 'Sign Up'} <ArrowUpRight className="w-3.5 h-3.5" />
             </Link>
           </div>
         </section>
