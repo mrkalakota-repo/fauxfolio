@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db'
 
-// Registration closes at 00:00 AM EST on the 6th of each month (end of the 5th)
-const REGISTRATION_CLOSE_DAY = 6
+// Registration closes at midnight EST on the 8th of each month (end of the 7th)
+const REGISTRATION_CLOSE_DAY = 8
 
 export function getCurrentMonthBounds() {
   const now = new Date()
@@ -21,8 +21,9 @@ export function isRegistrationOpen(): boolean {
 }
 
 export function getRegistrationDeadline(month: number, year: number): Date {
-  // Midnight EST on the 6th = registration closes after 5th
-  const deadline = new Date(`${year}-${String(month).padStart(2, '0')}-0${REGISTRATION_CLOSE_DAY}T00:00:00`)
+  // Midnight EST on the 8th = registration closes after 7th
+  const day = String(REGISTRATION_CLOSE_DAY).padStart(2, '0')
+  const deadline = new Date(`${year}-${String(month).padStart(2, '0')}-${day}T00:00:00`)
   return deadline
 }
 

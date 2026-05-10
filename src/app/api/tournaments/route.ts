@@ -55,6 +55,30 @@ export async function GET() {
       }
     }
 
+    // Top contender for landing page (when registration closed, tournament still active)
+    let topContender = null
+    const regOpen = isRegistrationOpen()
+    if (!regOpen && tournament.status === 'ACTIVE') {
+      const entries = await prisma.tournamentEntry.findMany({
+        where: { tournamentId: tournament.id, status: 'ACTIVE' },
+        include: {
+          user: { select: { name: true } },
+          holdings: { include: { stock: { select: { currentPrice: true } } } },
+        },
+      })
+      if (entries.length > 0) {
+        const ranked = entries
+          .map(e => {
+            const holdingsValue = e.holdings.reduce((s, h) => s + h.shares * h.stock.currentPrice, 0)
+            const currentValue = e.cashBalance + holdingsValue
+            const returnPct = ((currentValue - 20000) / 20000) * 100
+            return { name: maskName(e.user.name), returnPct: parseFloat(returnPct.toFixed(1)) }
+          })
+          .sort((a, b) => b.returnPct - a.returnPct)
+        topContender = ranked[0]
+      }
+    }
+
     // Previous month's winner (for landing page display)
     let previousWinner = null
     const prevDate = new Date(tournament.year, tournament.month - 2, 1)
@@ -95,7 +119,8 @@ export async function GET() {
       entryId,
       winner,
       previousWinner,
-      registrationOpen: isRegistrationOpen(),
+      topContender,
+      registrationOpen: regOpen,
     })
   } catch (error) {
     console.error('[tournaments/current]', error)

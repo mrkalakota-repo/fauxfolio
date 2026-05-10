@@ -146,6 +146,7 @@ export default function LandingPage() {
   const previousWinner = tournamentData?.previousWinner ?? null
   const currentTournament = tournamentData?.tournament ?? null
   const registrationOpen = tournamentData?.registrationOpen ?? false
+  const topContender = tournamentData?.topContender ?? null
 
   async function handleShareWinner(winner: { name: string; finalBalance: number | null; returnPct: string; certificateUrl: string; month: string }) {
     const certUrl = `${window.location.origin}${winner.certificateUrl}`
@@ -506,7 +507,7 @@ export default function LandingPage() {
       )}
 
       {/* Current Tournament Banner */}
-      {currentTournament && currentTournament.status !== 'ENDED' && (
+      {currentTournament && currentTournament.status !== 'ENDED' && (registrationOpen || topContender) && (
         <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-12">
           <div className="relative overflow-hidden rounded-2xl border border-green-500/30 bg-gradient-to-r from-green-500/10 via-emerald-500/5 to-green-500/10 px-6 py-5 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
             <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
@@ -522,7 +523,9 @@ export default function LandingPage() {
               <p className="text-sm text-green-200/60 mt-0.5">
                 {registrationOpen
                   ? `Ends ${new Date(currentTournament.endsAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} · $20,000 starting balance · isolated portfolio`
-                  : `Runs until ${new Date(currentTournament.endsAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
+                  : topContender
+                    ? `${topContender.name} leading at +${topContender.returnPct}% · Ends ${new Date(currentTournament.endsAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
+                    : `Runs until ${new Date(currentTournament.endsAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
                 }
               </p>
             </div>
