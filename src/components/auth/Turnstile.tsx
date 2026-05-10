@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { isNative } from '@/hooks/useNative'
 
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
@@ -10,13 +10,26 @@ declare global {
     turnstile?: {
       render: (container: HTMLElement, options: Record<string, unknown>) => string
       remove: (widgetId: string) => void
+      reset: (widgetId: string) => void
     }
   }
 }
 
-export default function TurnstileWidget() {
+export interface TurnstileHandle {
+  reset: () => void
+}
+
+const TurnstileWidget = forwardRef<TurnstileHandle>(function TurnstileWidget(_, ref) {
   const containerRef = useRef<HTMLDivElement>(null)
   const widgetIdRef = useRef<string | null>(null)
+
+  useImperativeHandle(ref, () => ({
+    reset() {
+      if (widgetIdRef.current !== null && window.turnstile) {
+        try { window.turnstile.reset(widgetIdRef.current) } catch {}
+      }
+    },
+  }))
 
   useEffect(() => {
     // Turnstile is web-only bot protection — skip in Capacitor native apps to avoid
@@ -66,4 +79,6 @@ export default function TurnstileWidget() {
   if (!SITE_KEY) return null
 
   return <div ref={containerRef} />
-}
+})
+
+export default TurnstileWidget

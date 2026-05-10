@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { TrendingUp, Loader2, Phone, Lock, User } from 'lucide-react'
 import PinInput from '@/components/auth/PinInput'
 import PhoneInput from '@/components/auth/PhoneInput'
-import TurnstileWidget from '@/components/auth/Turnstile'
+import TurnstileWidget, { type TurnstileHandle } from '@/components/auth/Turnstile'
 import { isNative } from '@/hooks/useNative'
 
 export default function RegisterPage() {
@@ -18,6 +18,7 @@ export default function RegisterPage() {
   const [confirmPin, setConfirmPin] = useState('')
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState<1 | 2>(1)
+  const turnstileRef = useRef<TurnstileHandle>(null)
 
   function goToStep2(e: React.FormEvent) {
     e.preventDefault()
@@ -47,7 +48,11 @@ export default function RegisterPage() {
         body: JSON.stringify({ phone, pin, name, cfToken, nativeApp: native }),
       })
       const data = await res.json()
-      if (!res.ok) { toast.error(data.error || 'Registration failed'); return }
+      if (!res.ok) {
+        toast.error(data.error || 'Registration failed')
+        turnstileRef.current?.reset()
+        return
+      }
       toast.success('Account created! You start with $10,000 virtual cash 🎉')
       router.push('/dashboard')
       router.refresh()
@@ -143,7 +148,7 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              <TurnstileWidget />
+              <TurnstileWidget ref={turnstileRef} />
 
               <div className="flex gap-3">
                 <button

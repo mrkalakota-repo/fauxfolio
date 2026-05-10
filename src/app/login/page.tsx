@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { TrendingUp, Loader2, Phone, Lock } from 'lucide-react'
 import PinInput from '@/components/auth/PinInput'
 import PhoneInput from '@/components/auth/PhoneInput'
-import TurnstileWidget from '@/components/auth/Turnstile'
+import TurnstileWidget, { type TurnstileHandle } from '@/components/auth/Turnstile'
 import { isNative } from '@/hooks/useNative'
 
 export default function LoginPage() {
@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [phone, setPhone] = useState('')
   const [pin, setPin] = useState('')
   const [loading, setLoading] = useState(false)
+  const turnstileRef = useRef<TurnstileHandle>(null)
 
   async function doLoginCore(phoneVal: string, pinVal: string) {
     if (pinVal.length < 4) { toast.error('Enter your PIN'); return }
@@ -32,7 +33,11 @@ export default function LoginPage() {
         body: JSON.stringify({ phone: phoneVal, pin: pinVal, cfToken, nativeApp: native }),
       })
       const data = await res.json()
-      if (!res.ok) { toast.error(data.error || 'Login failed'); return }
+      if (!res.ok) {
+        toast.error(data.error || 'Login failed')
+        turnstileRef.current?.reset()
+        return
+      }
       toast.success(`Welcome back, ${data.user.name}!`)
       router.push('/dashboard')
       router.refresh()
@@ -95,7 +100,7 @@ export default function LoginPage() {
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               Sign In
             </button>
-            <TurnstileWidget />
+            <TurnstileWidget ref={turnstileRef} />
           </form>
 
           <div className="mt-4 pt-4 border-t border-brand-border">
