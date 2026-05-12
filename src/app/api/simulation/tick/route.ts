@@ -327,7 +327,7 @@ export async function POST(req: NextRequest) {
       }),
     ])
     const snapHoldingsValue = snapHoldings.reduce((s, h) => s + h.stock.currentPrice * h.shares, 0)
-    const snapTotalValue = (snapUser?.cashBalance ?? 0) + snapHoldingsValue
+    const snapTotalValue = Number(snapUser?.cashBalance ?? 0) + snapHoldingsValue
 
     if (!hasSnapshotToday) {
       await prisma.portfolioSnapshot.create({

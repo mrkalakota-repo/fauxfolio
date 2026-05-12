@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
       include: { stock: { select: { currentPrice: true } } },
     })
     const holdingsValue = holdings.reduce((s, h) => s + h.stock.currentPrice * h.shares, 0)
-    const startingPortfolio = user.cashBalance + holdingsValue
+    const startingPortfolio = Number(user.cashBalance) + holdingsValue
 
     const endsAt = new Date()
     endsAt.setDate(endsAt.getDate() + 30)

@@ -35,9 +35,10 @@ export async function GET(
       const holdingsValue = m.user.holdings.reduce(
         (s, h) => s + h.stock.currentPrice * h.shares, 0
       )
-      const currentValue = m.user.cashBalance + holdingsValue
-      const growthPct = m.startingPortfolio > 0
-        ? (currentValue - m.startingPortfolio) / m.startingPortfolio * 100
+      const currentValue = Number(m.user.cashBalance) + holdingsValue
+      const startingPortfolio = Number(m.startingPortfolio)
+      const growthPct = startingPortfolio > 0
+        ? (currentValue - startingPortfolio) / startingPortfolio * 100
         : 0
       const firstName = m.user.name.split(' ')[0]
       const lastName = m.user.name.split(' ').slice(1).join(' ')
@@ -46,10 +47,10 @@ export async function GET(
         userId: m.userId,
         name: maskedName,
         isCurrentUser: m.userId === session.userId,
-        startingPortfolio: m.startingPortfolio,
+        startingPortfolio: Number(m.startingPortfolio),
         currentValue,
         growthPct,
-        finalPortfolio: m.finalPortfolio,
+        finalPortfolio: m.finalPortfolio != null ? Number(m.finalPortfolio) : null,
         rank: m.rank,
       }
     })

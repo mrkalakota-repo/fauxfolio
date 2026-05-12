@@ -24,7 +24,7 @@ export async function GET(
 
   if (!entry) return new Response('Certificate not found', { status: 404 })
 
-  const finalBalance = entry.finalBalance ?? 0
+  const finalBalance = Number(entry.finalBalance ?? 0)
   const returnPct = (((finalBalance - 20000) / 20000) * 100).toFixed(1)
   const monthLabel = formatMonth(entry.tournament.month, entry.tournament.year)
   const balanceFormatted = finalBalance.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })

@@ -22,8 +22,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       .map(entry => {
         const holdingsValue = entry.holdings.reduce((s, h) => s + h.shares * h.stock.currentPrice, 0)
         const currentValue = entry.status === 'ENDED' && entry.finalBalance != null
-          ? entry.finalBalance
-          : entry.cashBalance + holdingsValue
+          ? Number(entry.finalBalance)
+          : Number(entry.cashBalance) + holdingsValue
         const returnPct = ((currentValue - 20000) / 20000) * 100
         return {
           name: maskName(entry.user.name),

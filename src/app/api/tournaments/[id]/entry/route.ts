@@ -26,11 +26,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!entry) return NextResponse.json({ error: 'Entry not found' }, { status: 404 })
 
     const holdingsValue = entry.holdings.reduce((s, h) => s + h.shares * h.stock.currentPrice, 0)
-    const currentValue = entry.cashBalance + holdingsValue
+    const currentValue = Number(entry.cashBalance) + holdingsValue
 
     return NextResponse.json({
       entry: {
         ...entry,
+        cashBalance: Number(entry.cashBalance),
+        finalBalance: entry.finalBalance != null ? Number(entry.finalBalance) : null,
         joinedAt: entry.joinedAt.toISOString(),
         creditedAt: entry.creditedAt?.toISOString() ?? null,
         tournament: {

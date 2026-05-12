@@ -110,7 +110,7 @@ export async function POST(
       include: { stock: { select: { currentPrice: true } } },
     })
     const holdingsValue = holdings.reduce((s, h) => s + h.stock.currentPrice * h.shares, 0)
-    const startingPortfolio = (user?.cashBalance ?? 0) + holdingsValue
+    const startingPortfolio = Number(user?.cashBalance ?? 0) + holdingsValue
 
     await prisma.$transaction([
       prisma.leagueMember.create({

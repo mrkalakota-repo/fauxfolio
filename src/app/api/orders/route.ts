@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
           include: { stock: { select: { currentPrice: true } } },
         })
         const holdingsValue = updatedHoldings.reduce((s, h) => s + h.stock.currentPrice * h.shares, 0)
-        const totalValue = (updatedUser?.cashBalance ?? 0) + holdingsValue
+        const totalValue = Number(updatedUser?.cashBalance ?? 0) + holdingsValue
         await tx.portfolioSnapshot.create({
           data: { userId: session.userId, totalValue, cashBalance: updatedUser?.cashBalance ?? 0 },
         })

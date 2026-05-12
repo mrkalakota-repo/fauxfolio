@@ -58,8 +58,8 @@ export async function GET(
           userId: m.userId,
           name: m.user.name,
           joinedAt: m.joinedAt.toISOString(),
-          startingPortfolio: m.startingPortfolio,
-          finalPortfolio: m.finalPortfolio,
+          startingPortfolio: Number(m.startingPortfolio),
+          finalPortfolio: m.finalPortfolio != null ? Number(m.finalPortfolio) : null,
           rank: m.rank,
         })),
       },
@@ -72,7 +72,7 @@ export async function GET(
 
 async function finalizeLeague(
   leagueId: string,
-  members: Array<{ id: string; userId: string; startingPortfolio: number }>
+  members: Array<{ id: string; userId: string; startingPortfolio: number | { toNumber(): number } }>
 ) {
   const memberIds = members.map(m => m.userId)
 
@@ -100,8 +100,9 @@ async function finalizeLeague(
     const user = userMap.get(m.userId)
     const holdings = holdingsByUser.get(m.userId) ?? []
     const holdingsValue = holdings.reduce((s, h) => s + h.stock.currentPrice * h.shares, 0)
-    const finalPortfolio = (user?.cashBalance ?? 0) + holdingsValue
-    const growthPct = (finalPortfolio - m.startingPortfolio) / m.startingPortfolio * 100
+    const finalPortfolio = Number(user?.cashBalance ?? 0) + holdingsValue
+    const startingPortfolio = Number(m.startingPortfolio)
+    const growthPct = (finalPortfolio - startingPortfolio) / startingPortfolio * 100
     return { memberId: m.id, finalPortfolio, growthPct }
   })
 

@@ -51,7 +51,7 @@ export async function finalizeTournament(tournamentId: string) {
         (sum, h) => sum + h.shares * h.stock.currentPrice,
         0
       )
-      return { id: entry.id, userId: entry.user.id, finalBalance: entry.cashBalance + holdingsValue }
+      return { id: entry.id, userId: entry.user.id, finalBalance: Number(entry.cashBalance) + holdingsValue }
     })
     .sort((a, b) => b.finalBalance - a.finalBalance)
     .map((e, i) => ({ ...e, rank: i + 1 }))

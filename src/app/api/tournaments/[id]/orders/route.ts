@@ -50,7 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     if (side === 'BUY') {
       const requiredCash = type === 'MARKET' ? orderTotal : limitPrice! * shares
-      if (entry.cashBalance < requiredCash) {
+      if (Number(entry.cashBalance) < requiredCash) {
         return NextResponse.json({ error: 'Insufficient tournament buying power' }, { status: 400 })
       }
     }

@@ -39,7 +39,8 @@ export async function GET() {
     })
 
     const holdingsValue = enrichedHoldings.reduce((sum, h) => sum + h.currentValue, 0)
-    const totalValue = user.cashBalance + holdingsValue
+    const cashBalance = Number(user.cashBalance)
+    const totalValue = cashBalance + holdingsValue
     const totalCost = enrichedHoldings.reduce((sum, h) => sum + h.avgCost * h.shares, 0)
     const invested = 10000 + user.totalTopUps * 10000
     const totalGainLoss = totalValue - invested
@@ -48,7 +49,7 @@ export async function GET() {
     // Day change: compare to yesterday's closing
     const yesterdayValue = enrichedHoldings.reduce((sum, h) => {
       return sum + h.stock.previousClose * h.shares
-    }, user.cashBalance)
+    }, cashBalance)
     const dayChange = totalValue - yesterdayValue
     const dayChangePercent = yesterdayValue > 0 ? (dayChange / yesterdayValue) * 100 : 0
 
@@ -69,16 +70,16 @@ export async function GET() {
     const todayKey = new Date().toISOString().slice(0, 10)
     const historicalDays = Array.from(byDay.entries())
       .filter(([day]) => day !== todayKey)
-      .map(([, s]) => ({ id: s.id, userId: s.userId, totalValue: s.totalValue, cashBalance: s.cashBalance, snapshotAt: s.snapshotAt.toISOString() }))
+      .map(([, s]) => ({ id: s.id, userId: s.userId, totalValue: Number(s.totalValue), cashBalance: Number(s.cashBalance), snapshotAt: s.snapshotAt.toISOString() }))
 
     // Always end the chart at the current live portfolio value
     const portfolioHistory = [
       ...historicalDays,
-      { id: 'live', userId: session.userId, totalValue, cashBalance: user.cashBalance, snapshotAt: new Date().toISOString() },
+      { id: 'live', userId: session.userId, totalValue, cashBalance: cashBalance, snapshotAt: new Date().toISOString() },
     ]
 
     return NextResponse.json({
-      user,
+      user: { ...user, cashBalance },
       holdings: enrichedHoldings,
       totalValue,
       totalCost,

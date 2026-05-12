@@ -41,13 +41,13 @@ export async function GET() {
       })
       if (winnerEntry) {
         const returnPct = winnerEntry.finalBalance != null
-          ? (((winnerEntry.finalBalance - 20000) / 20000) * 100).toFixed(1)
+          ? (((Number(winnerEntry.finalBalance) - 20000) / 20000) * 100).toFixed(1)
           : '0.0'
         winner = {
           name: maskName(winnerEntry.user.name),
           fullName: winnerEntry.user.name,
           userId: winnerEntry.user.id,
-          finalBalance: winnerEntry.finalBalance,
+          finalBalance: winnerEntry.finalBalance != null ? Number(winnerEntry.finalBalance) : null,
           returnPct,
           certificateUrl: `/api/tournaments/${tournament.id}/certificate?userId=${winnerEntry.user.id}`,
           month: formatMonth(tournament.month, tournament.year),
@@ -70,7 +70,7 @@ export async function GET() {
         const ranked = entries
           .map(e => {
             const holdingsValue = e.holdings.reduce((s, h) => s + h.shares * h.stock.currentPrice, 0)
-            const currentValue = e.cashBalance + holdingsValue
+            const currentValue = Number(e.cashBalance) + holdingsValue
             const returnPct = ((currentValue - 20000) / 20000) * 100
             return { name: maskName(e.user.name), returnPct: parseFloat(returnPct.toFixed(1)) }
           })
@@ -94,13 +94,13 @@ export async function GET() {
       })
       if (prevWinnerEntry) {
         const returnPct = prevWinnerEntry.finalBalance != null
-          ? (((prevWinnerEntry.finalBalance - 20000) / 20000) * 100).toFixed(1)
+          ? (((Number(prevWinnerEntry.finalBalance) - 20000) / 20000) * 100).toFixed(1)
           : '0.0'
         previousWinner = {
           name: maskName(prevWinnerEntry.user.name),
           fullName: prevWinnerEntry.user.name,
           userId: prevWinnerEntry.user.id,
-          finalBalance: prevWinnerEntry.finalBalance,
+          finalBalance: prevWinnerEntry.finalBalance != null ? Number(prevWinnerEntry.finalBalance) : null,
           returnPct,
           certificateUrl: `/api/tournaments/${prevTournament.id}/certificate?userId=${prevWinnerEntry.user.id}`,
           month: formatMonth(prevTournament.month, prevTournament.year),
