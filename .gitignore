@@ -46,3 +46,4 @@ skills-lock.json
 
 # Nested duplicate directory
 StockTrader-Simulator/
+.idea/
