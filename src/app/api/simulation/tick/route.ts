@@ -134,7 +134,12 @@ export async function POST(req: NextRequest) {
 
         const totalCost = fillPrice * order.shares
         if (order.side === 'BUY') {
-          await tx.user.update({ where: { id: order.userId }, data: { cashBalance: { decrement: totalCost } } })
+          // Cash was reserved at limitPrice * shares at placement; refund any overpayment
+          const reserved = order.limitPrice! * order.shares
+          const refund = reserved - totalCost
+          if (refund > 0) {
+            await tx.user.update({ where: { id: order.userId }, data: { cashBalance: { increment: refund } } })
+          }
           const existing = await tx.holding.findUnique({
             where: { userId_stockSymbol: { userId: order.userId, stockSymbol: order.stockSymbol } },
           })
