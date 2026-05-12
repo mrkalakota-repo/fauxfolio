@@ -64,18 +64,8 @@ export async function POST(req: NextRequest) {
     const stock = await prisma.stock.findUnique({ where: { symbol: symbol.toUpperCase() } })
     if (!stock) return NextResponse.json({ error: 'Stock not found' }, { status: 404 })
 
-    const user = await prisma.user.findUnique({ where: { id: session.userId } })
-    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
-
     const executionPrice = type === 'MARKET' ? stock.currentPrice : limitPrice
     const orderTotal = executionPrice * shares
-
-    if (side === 'BUY') {
-      const requiredCash = type === 'MARKET' ? orderTotal : limitPrice! * shares
-      if (user.cashBalance < requiredCash) {
-        return NextResponse.json({ error: 'Insufficient buying power' }, { status: 400 })
-      }
-    }
 
     if (side === 'SELL') {
       const holding = await prisma.holding.findUnique({
@@ -89,10 +79,11 @@ export async function POST(req: NextRequest) {
     // For MARKET orders outside market hours, queue as PENDING
     if (type === 'MARKET' && !isMarketOpen()) {
       if (side === 'BUY') {
-        await prisma.user.update({
-          where: { id: session.userId },
-          data: { cashBalance: { decrement: orderTotal } },
-        })
+        const debited = await prisma.$executeRaw`
+          UPDATE users SET "cashBalance" = "cashBalance" - ${orderTotal}
+          WHERE id = ${session.userId} AND "cashBalance" >= ${orderTotal}
+        `
+        if (debited === 0) return NextResponse.json({ error: 'Insufficient buying power' }, { status: 400 })
       }
       const order = await prisma.order.create({
         data: { userId: session.userId, stockSymbol: symbol.toUpperCase(), type: 'MARKET', side, shares, status: 'PENDING' },
@@ -113,6 +104,14 @@ export async function POST(req: NextRequest) {
     // For MARKET orders during market hours, execute immediately in a transaction
     if (type === 'MARKET') {
       const result = await prisma.$transaction(async tx => {
+        if (side === 'BUY') {
+          const debited = await tx.$executeRaw`
+            UPDATE users SET "cashBalance" = "cashBalance" - ${orderTotal}
+            WHERE id = ${session.userId} AND "cashBalance" >= ${orderTotal}
+          `
+          if (debited === 0) return null
+        }
+
         const order = await tx.order.create({
           data: {
             userId: session.userId,
@@ -127,10 +126,6 @@ export async function POST(req: NextRequest) {
         })
 
         if (side === 'BUY') {
-          await tx.user.update({
-            where: { id: session.userId },
-            data: { cashBalance: { decrement: orderTotal } },
-          })
           const existing = await tx.holding.findUnique({
             where: { userId_stockSymbol: { userId: session.userId, stockSymbol: symbol.toUpperCase() } },
           })
@@ -186,6 +181,7 @@ export async function POST(req: NextRequest) {
         return order
       })
 
+      if (!result) return NextResponse.json({ error: 'Insufficient buying power' }, { status: 400 })
       await writeAuditLog({
         userId: session.userId,
         action: 'ORDER_PLACED',
@@ -198,12 +194,13 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // LIMIT order: reserve cash for buy, reserve shares logically for sell
+    // LIMIT order: reserve cash for buy atomically
     if (side === 'BUY') {
-      await prisma.user.update({
-        where: { id: session.userId },
-        data: { cashBalance: { decrement: limitPrice! * shares } },
-      })
+      const debited = await prisma.$executeRaw`
+        UPDATE users SET "cashBalance" = "cashBalance" - ${limitPrice! * shares}
+        WHERE id = ${session.userId} AND "cashBalance" >= ${limitPrice! * shares}
+      `
+      if (debited === 0) return NextResponse.json({ error: 'Insufficient buying power' }, { status: 400 })
     }
 
     const order = await prisma.order.create({

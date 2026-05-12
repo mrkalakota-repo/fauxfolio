@@ -59,15 +59,13 @@ export async function POST(req: NextRequest) {
 
     if (action === 'BUY') {
       const totalCost = premiumPerShare * 100 * numContracts
-      if (user.cashBalance < totalCost) {
-        return NextResponse.json({ error: 'Insufficient buying power' }, { status: 400 })
-      }
 
       const position = await prisma.$transaction(async tx => {
-        await tx.user.update({
-          where: { id: session.userId },
-          data: { cashBalance: { decrement: totalCost } },
-        })
+        const debited = await tx.$executeRaw`
+          UPDATE users SET "cashBalance" = "cashBalance" - ${totalCost}
+          WHERE id = ${session.userId} AND "cashBalance" >= ${totalCost}
+        `
+        if (debited === 0) return null
         return tx.optionPosition.create({
           data: {
             userId: session.userId,
@@ -78,6 +76,7 @@ export async function POST(req: NextRequest) {
         })
       })
 
+      if (!position) return NextResponse.json({ error: 'Insufficient buying power' }, { status: 400 })
       return NextResponse.json({
         position: { ...position, openedAt: position.openedAt.toISOString() },
         message: `Bought ${numContracts} contract${numContracts !== 1 ? 's' : ''} for $${totalCost.toFixed(2)}`,
