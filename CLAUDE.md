@@ -228,6 +228,28 @@ Frontend detects `upgradeRequired: true` on a 403 to open `GetMoreCashModal`.
 - **Input validation**: stock symbol must match `/^[A-Za-z]{1,5}$/`; share quantities 1–1,000,000. Validate at the top of each route before any DB access.
 - **Rate limiting key**: IP extracted from `x-forwarded-for` (first segment) for auth/register/leaderboard; `userId:ip` for tick. Cleanup runs on a 5-minute interval.
 
+### Decimal Fields
+`User.cashBalance`, `User.optionsPnl`, `PortfolioSnapshot.totalValue/cashBalance`, `TournamentEntry.cashBalance/finalBalance`, and `LeagueMember.startingPortfolio/finalPortfolio` are `Decimal @db.Decimal(10, 2)` (PostgreSQL `numeric`). Two rules apply everywhere:
+
+1. **Regular Prisma queries** return `Prisma.Decimal` objects. Always wrap with `Number()` before arithmetic or JSON serialization: `Number(user.cashBalance)`. Prisma.Decimal serializes as a string in JSON if not converted.
+
+2. **`$queryRaw`** — PostgreSQL's `pg` driver returns `numeric` columns as strings, unlike `float8` which comes back as a JS number. Cast in the SQL: `u."cashBalance"::float`. Failure to cast causes silent string concatenation bugs in arithmetic (e.g. `"100.00" + 50` → `"100.0050"`).
+
+New monetary fields should also use `Decimal @db.Decimal(10, 2)`.
+
+### Cash Safety Pattern
+All BUY order paths (regular, tournament, options) debit cash **atomically** using a conditional raw SQL update to prevent race conditions:
+```ts
+const debited = await prisma.$executeRaw`
+  UPDATE users SET "cashBalance" = "cashBalance" - ${amount}
+  WHERE id = ${userId} AND "cashBalance" >= ${amount}
+`
+if (debited === 0) return NextResponse.json({ error: 'Insufficient buying power' }, { status: 400 })
+```
+Never use a read-then-write pattern (findUnique balance check followed by a separate update) — concurrent requests can both pass the check before either debit lands.
+
+For LIMIT BUY orders, cash is reserved at `limitPrice × shares` at placement. At fill time, only an overpayment refund is issued: `increment: (limitPrice - fillPrice) × shares`. Do not debit again at fill.
+
 ### After-Hours Order Queuing
 Market orders placed outside market hours are stored with `status: 'PENDING'` instead of executing immediately. For BUY orders, cash is debited at placement (reserved). The tick route fills all `PENDING MARKET` orders on the first tick after market open, using the stock's current price at fill time. LIMIT orders also queue as `PENDING` and are evaluated each tick.
 
@@ -237,7 +259,7 @@ Market orders placed outside market hours are stored with `status: 'PENDING'` in
 ### Tournaments
 Monthly competitions running the full calendar month. One `Tournament` per `(month, year)` pair — created lazily via `getOrCreateCurrentTournament()` in `src/lib/tournament.ts`.
 
-- **Registration**: open until the 5th of each month (midnight EST on the 6th). `isRegistrationOpen()` checks this. Entry requires a $1.99 Stripe payment (dev mode: credited directly). Each `TournamentEntry` gets a fresh `$20,000` starting balance in an **isolated** portfolio (`TournamentHolding` model, separate from the user's main holdings).
+- **Registration**: open until the 7th of each month (midnight EST on the 8th). `isRegistrationOpen()` checks this. Entry requires a $1.99 Stripe payment (dev mode: credited directly). Each `TournamentEntry` gets a fresh `$20,000` starting balance in an **isolated** portfolio (`TournamentHolding` model, separate from the user's main holdings).
 - **Isolated portfolio**: tournament orders go to `/api/tournaments/[id]/orders` and use `TournamentHolding` + `TournamentEntry.cashBalance`, never touching the user's main `cashBalance` or `Holding` records.
 - **Lazy finalization**: on any GET to `/api/tournaments/[id]` (or `/api/tournaments`) after `endsAt < now`, `finalizeTournament()` ranks entries by `cashBalance + holdingsValue`, writes `finalBalance`/`rank`/`status=ENDED`, and credits the final balance back to each entrant's main `cashBalance`.
 - **Winner certificate**: PDF generated server-side at `/api/tournaments/[id]/certificate?userId=X` via `@react-pdf/renderer`.
