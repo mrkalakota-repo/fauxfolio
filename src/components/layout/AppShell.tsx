@@ -7,7 +7,7 @@ import useSWR from 'swr'
 import {
   TrendingUp, LayoutDashboard, Briefcase, Star, ClipboardList,
   Search, LogOut, ChevronRight, AlertCircle, Menu, BarChart2,
-  Wallet, Circle, Loader2, BookOpen, Zap, Medal,
+  Wallet, Circle, Loader2, BookOpen, Zap, Medal, Trophy,
 } from 'lucide-react'
 import { cn, formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
@@ -23,6 +23,7 @@ const NAV_ITEMS = [
   { href: '/markets',      label: 'Markets',      icon: BarChart2 },
   { href: '/orders',       label: 'Orders',       icon: ClipboardList },
   { href: '/tournaments',  label: 'Tournaments',  icon: Medal },
+  { href: '/leaderboard',  label: 'Leaderboard',  icon: Trophy },
 ]
 
 const LOW_BALANCE_THRESHOLD = 500

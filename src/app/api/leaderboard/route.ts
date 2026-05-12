@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rateLimit'
+import { getSessionUserFromRequest } from '@/lib/auth'
 
 function maskName(name: string): string {
   const parts = name.trim().split(' ')
@@ -12,6 +13,8 @@ export async function GET(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
   const rl = checkRateLimit(`leaderboard:${ip}`, RATE_LIMITS.LEADERBOARD.max, RATE_LIMITS.LEADERBOARD.windowMs)
   if (!rl.allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+
+  const session = await getSessionUserFromRequest(req)
 
   try {
     // Single aggregating query — DB sums holdings value per user instead of loading all rows
@@ -58,9 +61,11 @@ export async function GET(req: NextRequest) {
       }
     })
 
-    // Top 10 ranked by % return (best strategy wins)
-    const ranked = [...computed]
-      .sort((a, b) => b.totalReturnPct - a.totalReturnPct)
+    // All users ranked by % return (best strategy wins)
+    const allRanked = [...computed].sort((a, b) => b.totalReturnPct - a.totalReturnPct)
+
+    // Top 10 for public leaderboard
+    const ranked = allRanked
       .slice(0, 10)
       .map((entry, index) => ({ ...entry, rank: index + 1 }))
 
@@ -69,6 +74,17 @@ export async function GET(req: NextRequest) {
       (best, u) => (u.grossValue > best.grossValue ? u : best),
       computed[0] ?? null
     )
+
+    // Current user's rank and stats (if authenticated)
+    let myRank: number | null = null
+    let myStats: typeof computed[0] & { rank: number } | null = null
+    if (session) {
+      const myIndex = allRanked.findIndex(u => u.id === session.userId)
+      if (myIndex !== -1) {
+        myRank = myIndex + 1
+        myStats = { ...allRanked[myIndex], rank: myRank }
+      }
+    }
 
     // Aggregate stats
     const totalTraders = await prisma.user.count()
@@ -80,6 +96,8 @@ export async function GET(req: NextRequest) {
       {
         leaderboard: ranked,
         richest,
+        myRank,
+        myStats,
         stats: {
           totalTraders,
           totalVirtualVolume: (totalOrdersValue._sum.fillPrice ?? 0) * 1,
