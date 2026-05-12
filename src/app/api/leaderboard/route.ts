@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
       createdAt: Date
       holdingsValue: number
     }>>`
-      SELECT u.id, u.name, u."cashBalance", u."totalTopUps", u."optionsPnl", u."createdAt",
+      SELECT u.id, u.name, u."cashBalance"::float, u."totalTopUps", u."optionsPnl"::float, u."createdAt",
         COALESCE(SUM(h.shares * s."currentPrice"), 0)::float AS "holdingsValue"
       FROM users u
       LEFT JOIN holdings h ON h."userId" = u.id

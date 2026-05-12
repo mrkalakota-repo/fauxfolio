@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       tokenVersion: user.tokenVersion,
     })
     const response = NextResponse.json({
-      user: { id: user.id, phone: user.phone, name: user.name, cashBalance: user.cashBalance },
+      user: { id: user.id, phone: user.phone, name: user.name, cashBalance: Number(user.cashBalance) },
     })
     response.cookies.set(COOKIE_NAME, token, {
       httpOnly: true,
