@@ -92,6 +92,12 @@ export async function GET(req: NextRequest) {
       _sum: { fillPrice: true },
     })
 
+    // Personalized response must not be publicly cached — CDN would serve one
+    // user's rank data to another. Use private when authenticated, public otherwise.
+    const cacheHeader = session
+      ? 'private, no-store'
+      : 'public, s-maxage=60, stale-while-revalidate=300'
+
     return NextResponse.json(
       {
         leaderboard: ranked,
@@ -103,7 +109,7 @@ export async function GET(req: NextRequest) {
           totalVirtualVolume: (totalOrdersValue._sum.fillPrice ?? 0) * 1,
         },
       },
-      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } }
+      { headers: { 'Cache-Control': cacheHeader } }
     )
   } catch (error) {
     console.error('[leaderboard]', error)
