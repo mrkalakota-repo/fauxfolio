@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import useSWR from 'swr'
+import useSWR, { useSWRConfig } from 'swr'
 import Link from 'next/link'
 import { TrendingUp, TrendingDown, DollarSign, Wallet, Circle, ShieldCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -16,6 +16,7 @@ const fetcher = (url: string) => fetch(url).then(r => r.json())
 
 export default function DashboardPage() {
   const searchParams = useSearchParams()
+  const { mutate } = useSWRConfig()
   const { data: portfolioData, isLoading: portLoading } = useSWR<Portfolio>(
     '/api/portfolio', fetcher, { refreshInterval: 30000 }
   )
@@ -30,9 +31,16 @@ export default function DashboardPage() {
   // Handle Stripe redirect result
   useEffect(() => {
     const topup = searchParams.get('topup')
-    if (topup === 'success') toast.success('$10,000 virtual cash added to your account!')
+    if (topup === 'success') {
+      toast.success('Virtual cash added to your account!')
+      // Webhook fires asynchronously — mutate immediately then again after 2 s
+      // to ensure the balance reflects by the time the user looks
+      mutate('/api/portfolio')
+      const t = setTimeout(() => mutate('/api/portfolio'), 2000)
+      return () => clearTimeout(t)
+    }
     if (topup === 'cancelled') toast.error('Checkout cancelled — no charge made')
-  }, [searchParams])
+  }, [searchParams, mutate])
 
   const portfolio = portfolioData
   const marketOpen = stocksData?.marketOpen ?? moversData?.marketOpen ?? false
