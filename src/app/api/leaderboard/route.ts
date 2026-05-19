@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
       FROM users u
       LEFT JOIN holdings h ON h."userId" = u.id
       LEFT JOIN stocks s ON s.symbol = h."stockSymbol"
+      WHERE u.phone != '5555550100'
       GROUP BY u.id
     `
 
