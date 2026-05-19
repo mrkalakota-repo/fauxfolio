@@ -26,8 +26,9 @@ export async function POST(req: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
     ?? `https://${req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'localhost:3000'}`
 
-  // Dev mode: no Stripe key — credit cash directly
-  if (!hasStripe || !stripe) {
+  // Demo account and dev mode both bypass Stripe and credit cash directly
+  const isDemo = session.phone === '5555550100'
+  if (!hasStripe || !stripe || isDemo) {
     await prisma.user.update({
       where: { id: session.userId },
       data: {
